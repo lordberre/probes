@@ -1,0 +1,11 @@
+Quickstart:
+
+# ./configure
+# make
+
+Once built, this is all it takes to get darkstat running:
+
+# darkstat -i eth0
+
+# chprobe
+darkstat -i enp0s25 -p 35631 --syslog

@@ -1,0 +1,8 @@
+# v0.93
+1. Fix issue with upnpc-script when IPv6 active in client
+2. Smoke-scripts now has proper logging
+3. Firewall now more permissive
+4. Syslog now disabled externally. Also fixed darkstat logrotation issue.
+
+# v0.94
+1. iperf3 scripts synced

@@ -1,0 +1,5 @@
+/opt/smokeping/bin/./smokeping --master-url=http://project-mayhem.se/smokeping/smokeping.fcgi \
+             --cache-dir=/opt/smokeping/cache/slave/ \
+             --shared-secret=/opt/smokeping/var/secret.txt \
+	     --logfile=/home/chprobe/sm0ke.log \
+	     --debug-daemon
