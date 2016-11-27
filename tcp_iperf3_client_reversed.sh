@@ -1,7 +1,7 @@
 #!/bin/bash
 # Version 0.92
 target="$(curl -s project-mayhem.se/probes/ip.txt)"
-count=$(( ( RANDOM % 9999 )  + 1 ))
+count=$(( ( RANDOM % 9999 )  + 100 ))
 #logevent='"$(logger -p info)"'
 
 # Uncomment to use Iperf TCP Daemon (with random timer)
