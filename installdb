@@ -1,5 +1,5 @@
 # Run only once unless you wanna reset the database
-rrdtool create /home/chprobe/tcpdb.rrd \
+rrdtool create /home/chprobe/tcpdb_$(hostname -d).rrd \
 --step 900 \
 DS:upstream:GAUGE:1880:1:1000 \
 DS:downstream:GAUGE:1880:1:1000 \
