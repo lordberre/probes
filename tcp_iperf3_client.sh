@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 0.92
+# Version 0.93
 target="$(curl -s project-mayhem.se/probes/ip.txt)"
 count=$(( ( RANDOM % 9999 )  + 100 ))
 #logevent='"$(logger -p info)"'
@@ -9,9 +9,12 @@ case "$(pgrep -f "iperf3 --client" | wc -w)" in
 
 0)  echo "iperf3 tcp daemon not running, initiating random timer then restarting daemon:" | logger -p info
     sleep $[ ( $RANDOM % 240 )  + 60 ]s
-    /bin/iperf3 --client $target -T Upload -P 15 -w 1m 2>&1 | egrep 'SUM.*rece' | awk '/Mbits\/sec/ {print $1,$7}' | logger -t iperf3tcp[$(echo $count)] -p local3.debug & echo "Timer stopped - tcp daemon started" | logger -p info 
+    /bin/iperf3 --client $target -T Upload -P 15 -w 1m 2>&1 | egrep 'SUM.*rece' | awk '/Mbits\/sec/ {print $1,$7}' | l
+ogger -t iperf3tcp[$(echo $count)] -p local3.debug & echo "Timer stopped - tcp daemon started" | logger -p info 
      sleep 15
-     rrdtool updatev /home/chprobe/tcpdb.rrd --template upstream N:$(tail /var/log/iperf3tcp.log | egrep $count | awk '{print $7}') ## debug ## & echo $(tail /var/log/iperf3tcp.log | egrep $count | awk '{print $7}') >> /home/chprobe/dbdebug.log
+     rrdtool update /home/chprobe/tcpdb_$(hostname -d).rrd --template upstream N:$(tail /var/log/iperf3tcp.log | egrep
+ $count | awk '{print $7}') ## debug ## & echo $(tail /var/log/iperf3tcp.log | egrep $count | awk '{print $7}') >> /ho
+me/chprobe/dbdebug.log
     ;;
 1)  echo "iperf tcp daemon running, all OK:" | logger -p info
     ;;
