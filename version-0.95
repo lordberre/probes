@@ -6,3 +6,6 @@
 
 # v0.94
 1. iperf3 scripts synced
+
+# v0.95
+1. Backoff-timer för iperf3tcp scripts
