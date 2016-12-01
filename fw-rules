@@ -25,11 +25,12 @@ iptables -A INPUT -s 94.137.97.98/32 -p tcp --dport 34521 -j ACCEPT
 iptables -A INPUT -s 192.168.0.1/32 -j ACCEPT
 iptables -A INPUT -s 192.168.1.1/32 -j ACCEPT
 
-# darkstat
-iptables -A INPUT -p tcp -m tcp --dport 35631 -j ACCEPT
+# Allow traffic from local subnets
+# iptables -A INPUT -s 192.168.0.1/24
+# iptables -A INPUT -s 192.168.1.1/24
 
-# temp
-# iptables -A INPUT -s 192.168.0.0/16 -j ACCEPT
+# darkstat
+# iptables -A INPUT -p tcp -m tcp --dport 35631 -j ACCEPT
 
 # drop rest
 iptables -A INPUT -j DROP
