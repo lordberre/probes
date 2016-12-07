@@ -3,4 +3,4 @@ rrdtool create /home/chprobe/tcpdb_$(hostname -d).rrd \
 --step 900 \
 DS:upstream:GAUGE:1880:1:1000 \
 DS:downstream:GAUGE:1880:1:1000 \
-RRA:MAX:0.5:1:1500 \
+RRA:MAX:0.5:1:15500 \
