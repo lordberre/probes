@@ -13,7 +13,7 @@ MAILTO=root
 # |  |  |  |  .---- day of week (0 - 6) (Sunday=0 or 7) OR sun,mon,tue,wed,thu,fri,sat
 # |  |  |  |  |
 # *  *  *  *  * user-name  command to be executed" > /etc/crontab
-echo "*/5  *  *  *  * root /home/chprobe/./udp_iperf2_client.sh > /dev/null"  >> /etc/crontab
+# echo "*/5  *  *  *  * root /home/chprobe/./udp_iperf2_client.sh > /dev/null"  >> /etc/crontab
 echo "*/16 *  *  *  * root /home/chprobe/./tcp_iperf3_client.sh > /dev/null" >> /etc/crontab
 echo "*/15 *  *  *  * root /home/chprobe/./tcp_iperf3_client_reversed.sh > /dev/null" >> /etc/crontab
 echo "*/30 *  *  *  * root /home/chprobe/./upnpc-probe.sh > /dev/null" >> /etc/crontab
