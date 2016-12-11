@@ -32,4 +32,5 @@ echo "/home/chprobe/./smoke-slave"              >> /etc/rc.local
 echo "/home/chprobe/./probemanager"             >> /etc/rc.local
 # echo "# darkstat -i enp0s25 -p 35631 --syslog"    >> /etc/rc.local
 chmod +x /etc/rc.d/rc.local
+systemctl restart crond
 echo "Mission complete."
