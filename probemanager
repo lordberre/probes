@@ -1,12 +1,14 @@
 #!/bin/bash
 # Install or update probe scripts
-# Version 0.1
+# Version 0.2
 probeurl=http://project-mayhem.se/files/chprobe_latest_$(hostname -d).tgz
 probedefaults=http://project-mayhem.se/files/chprobe_latest_general.tgz
 probedir=/home/chprobe
 
 case "$1" in
   installation)
+  echo 'Updating Manager'
+  wget $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
   echo 'Downloading & installing probe'
   wget $probeurl -P $probedir/
   sleep 10
@@ -33,6 +35,8 @@ case "$1" in
  echo "We're done"
     ;;
   update)
+  echo 'Updating Manager'
+  wget $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
   echo 'Backing up probe'
   tar cvfz chprobe_backup-$(date +"%d%m%y"-"%H%M").tgz | tr -d '-' $probedir/
   echo 'Downloading & updating probe'
@@ -59,6 +63,8 @@ case "$1" in
   echo "We're done"
     ;;
   restoredefault)
+  echo 'Updating Manager'
+  wget $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
   echo 'Downloading & installing probe with default settings'
   wget $probedefaults -P $probedir/
   sleep 10
