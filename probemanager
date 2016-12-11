@@ -2,6 +2,7 @@
 # Install or update probe scripts
 # Version 0.1
 probeurl=http://project-mayhem.se/files/chprobe_latest_$(hostname -d).tgz
+probedefaults=http://project-mayhem.se/files/chprobe_latest_general.tgz
 probedir=/home/chprobe
 
 case "$1" in
@@ -59,7 +60,7 @@ case "$1" in
     ;;
   restoredefault)
   echo 'Downloading & installing probe with default settings'
-  wget $probeurl -P $probedir/
+  wget $probedefaults -P $probedir/
   sleep 10
   tar xvfz $probedir/chprobe_latest_general.tgz
   sleep 5
