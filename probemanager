@@ -14,7 +14,7 @@ case "$1" in
   sleep 5
   chmod +x $probedir/probe_settings
   chmod +x $probedir/fw-rules
-  chmod +x $probedir/updateprobe.*
+  chmod +x $probedir/probemanager
   chmod +x $probedir/installdb
   chmod +x $probedir/installdb_udp
   chmod +x $probedir/smoke-slave
@@ -42,7 +42,7 @@ case "$1" in
   sleep 5
   chmod +x $probedir/probe_settings
   chmod +x $probedir/fw-rules
-  chmod +x $probedir/updateprobe.*
+  chmod +x $probedir/probemanager
   chmod +x $probedir/installdb
   chmod +x $probedir/installdb_udp
   chmod +x $probedir/smoke-slave
@@ -66,7 +66,7 @@ case "$1" in
   sleep 5
   chmod +x $probedir/probe_settings
   chmod +x $probedir/fw-rules
-  chmod +x $probedir/updateprobe.*
+  chmod +x $probedir/probemanager
   chmod +x $probedir/installdb
   chmod +x $probedir/installdb_udp
   chmod +x $probedir/smoke-slave
