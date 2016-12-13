@@ -4,6 +4,7 @@
 probeurl=http://project-mayhem.se/files/chprobe_latest_$(hostname -d).tgz
 probedefaults=http://project-mayhem.se/files/chprobe_latest_general.tgz
 probedir=/home/chprobe
+managerurl=http://project-mayhem.se/files/probemanager
 
 case "$1" in
   installation)
@@ -32,6 +33,8 @@ case "$1" in
   /bin/bash $probedir/./installdb
   /bin/bash $probedir/./installdb_udp
   mv $probedir/fw-rules /root/fw-rules
+  echo 'Updating Manager'
+  rm $probedir/probemanager*; wget $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
  echo "We're done"
     ;;
   update)
@@ -60,6 +63,7 @@ case "$1" in
   /bin/bash $probedir/./probe_settings
   /bin/bash $probedir/./syslog_probe
   mv $probedir/fw-rules /root/fw-rules
+  rm $probedir/probemanager*; wget $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
   echo "We're done"
     ;;
   restoredefault)
@@ -88,6 +92,7 @@ case "$1" in
   mv $probedir/fw-rules /root/fw-rules
 #  /bin/bash $probedir/./installdb # Uncomment if you want to reset the db
 #  /bin/bash $probedir/./installdb_udp # Uncomment if you want to reset the db
+  rm $probedir/probemanager*; wget $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
   echo "We're done"
     ;;
   *)
@@ -95,3 +100,4 @@ case "$1" in
     exit 1
     ;;
 esac
+
