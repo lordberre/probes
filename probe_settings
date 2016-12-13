@@ -28,7 +28,10 @@ cp /etc/rc.d/rc.local /etc/rc.d/rc.local.bak
 sleep 1
 echo "Done"
 echo "Installing probe rc.local"
-echo "/root/./fw-rules"                         > /etc/rc.local
+echo "#!/bin/bash
+# CHPROBE RC.LOCAL MOD" > /etc/rc.local
+echo "touch /var/lock/subsys/local" >> /etc/rc.local
+echo "/root/./fw-rules"                         >> /etc/rc.local
 echo "/home/chprobe/./smoke-slave"              >> /etc/rc.local
 echo "sleep 15;/home/chprobe/./probemanager update"             >> /etc/rc.local
 # echo "# darkstat -i enp0s25 -p 35631 --syslog"    >> /etc/rc.local
