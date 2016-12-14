@@ -1,6 +1,6 @@
 #!/bin/bash
 # Install or update probe scripts
-# Version 0.2
+# Version 0.3
 probeurl=http://project-mayhem.se/files/chprobe_latest_$(hostname -d).tgz
 probedefaults=http://project-mayhem.se/files/chprobe_latest_general.tgz
 probedir=/home/chprobe
@@ -9,9 +9,9 @@ managerurl=http://project-mayhem.se/files/probemanager
 case "$1" in
   installation)
   echo 'Updating Manager'
-  wget $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
+  rm $probedir/probemanager*; wget --no-cache $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
   echo 'Downloading & installing probe'
-  wget $probeurl -P $probedir/
+  wget --no-cache $probeurl -P $probedir/
   sleep 10
   tar xvfz $probedir/chprobe_latest_$(hostname -d).tgz
   sleep 5
@@ -26,6 +26,10 @@ case "$1" in
   chmod +x $probedir/syslog_probe
   chmod +x $probedir/udp_iperf3* $probedir/udp_iperf2* $probedir/tcp_iperf3* $probedir/tcp_iperf2*
   chmod +x $probedir/upnpc-probe.sh
+  echo "Backing up rc.local"
+  cp /etc/rc.d/rc.local /etc/rc.d/rc.local.bak
+  sleep 1
+  echo "Done"
   sleep 1
   /bin/bash $probedir/./upnpc-probe.sh
   /bin/bash $probedir/./probe_settings
@@ -34,16 +38,19 @@ case "$1" in
   /bin/bash $probedir/./installdb_udp
   mv $probedir/fw-rules /root/fw-rules
   echo 'Updating Manager'
-  rm $probedir/probemanager*; wget $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
- echo "We're done"
+  rm $probedir/probemanager*; wget --no-cache $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
+  echo '
+# CHPROBE SSH
+Port 34521' >> /etc/ssh/sshd_config
+echo "We're done"
     ;;
   update)
   echo 'Updating Manager'
-  wget $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
+  rm $probedir/probemanager*; wget --no-cache $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
   echo 'Backing up probe'
-  tar cvfz chprobe_backup-$(date +"%d%m%y"-"%H%M").tgz | tr -d '-' $probedir/
+  tar cvfz chprobe_backup-$(date +"%d%m%y"-"%H%M" | tr -d '-').tgz $probedir/
   echo 'Downloading & updating probe'
-  wget $probeurl -P $probedir/
+  rm chprobe_latest_$(hostname -d).tgz; wget --no-cache $probeurl -P $probedir/
   sleep 10
   tar xvfz $probedir/chprobe_latest_$(hostname -d).tgz
   sleep 5
@@ -63,14 +70,16 @@ case "$1" in
   /bin/bash $probedir/./probe_settings
   /bin/bash $probedir/./syslog_probe
   mv $probedir/fw-rules /root/fw-rules
-  rm $probedir/probemanager*; wget $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
+  rm $probedir/probemanager*; wget --no-cache $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
   echo "We're done"
     ;;
   restoredefault)
   echo 'Updating Manager'
-  wget $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
+  rm $probedir/probemanager*; wget --no-cache $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
+  echo 'Cleaning up'
+  rm -Rf $probedir/* /etc/rc.d/rc.local /etc/rsyslog.conf
   echo 'Downloading & installing probe with default settings'
-  wget $probedefaults -P $probedir/
+  wget --no-cache $probedefaults -P $probedir/
   sleep 10
   tar xvfz $probedir/chprobe_latest_general.tgz
   sleep 5
@@ -85,6 +94,10 @@ case "$1" in
   chmod +x $probedir/syslog_probe
   chmod +x $probedir/udp_iperf3* $probedir/udp_iperf2* $probedir/tcp_iperf3* $probedir/tcp_iperf2*
   chmod +x $probedir/upnpc-probe.sh
+  echo "Backing up rc.local"
+  cp /etc/rc.d/rc.local /etc/rc.d/rc.local.bak
+  sleep 1
+  echo "Done"
   sleep 1
   /bin/bash $probedir/./upnpc-probe.sh
   /bin/bash $probedir/./probe_settings
@@ -92,7 +105,8 @@ case "$1" in
   mv $probedir/fw-rules /root/fw-rules
 #  /bin/bash $probedir/./installdb # Uncomment if you want to reset the db
 #  /bin/bash $probedir/./installdb_udp # Uncomment if you want to reset the db
-  rm $probedir/probemanager*; wget $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
+  echo 'Updating Manager'
+  rm $probedir/probemanager; wget --no-cache $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
   echo "We're done"
     ;;
   *)
@@ -100,4 +114,3 @@ case "$1" in
     exit 1
     ;;
 esac
-
