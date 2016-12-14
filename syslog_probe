@@ -4,8 +4,8 @@ cp /etc/rsyslog.conf /etc/rsyslog.conf.bak
 sleep 1
 echo "Done"
 echo "Installing probe rsyslog configuration"
-echo "# rsyslog configuration file # edited by berre
-# uncomment remote servers below for remote udp syslog, iperf2 or iperf3 (default).
+echo "# rsyslog configuration file # chprobe
+# rsyslog configuration file
 
 # For more information see /usr/share/doc/rsyslog-*/rsyslog_conf.html
 # If you experience problems, see http://www.rsyslog.com/doc/troubleshoot.html
@@ -79,12 +79,6 @@ uucp,news.crit                                          /var/log/spooler
 # Save boot messages also to boot.log
 local7.*                                                /var/log/boot.log
 
-# iperf tcp
-local5.debug                                            /var/log/iperftcp.log
-
-# iperf udp
-local6.debug                                            /var/log/iperfudp.log
-
 # iperf3 tcp
 local3.debug						/var/log/iperf3tcp.log
 
@@ -94,6 +88,7 @@ local4.debug						/var/log/iperf3udp.log
 # darkstat
 daemon.debug                                            /var/log/darkstat.log
 
+
 # ### begin forwarding rule ###
 # The statement between the begin ... end define a SINGLE forwarding
 # rule. They belong together, do NOT split them. If you create multiple
@@ -102,18 +97,14 @@ daemon.debug                                            /var/log/darkstat.log
 #
 # An on-disk queue is created for this action. If the remote host is
 # down, messages are spooled to disk and sent when it is up again.
-$ActionQueueFileName fwdRule1 # unique name prefix for spool files
-$ActionQueueMaxDiskSpace 1g   # 1gb space limit (use as much as possible)
-$ActionQueueSaveOnShutdown on # save messages to disk on shutdown
-$ActionQueueType LinkedList   # run asynchronously
-$ActionResumeRetryCount -1    # infinite retries if host is down
+#$ActionQueueFileName fwdRule1 # unique name prefix for spool files
+#$ActionQueueMaxDiskSpace 1g   # 1gb space limit (use as much as possible)
+#$ActionQueueSaveOnShutdown on # save messages to disk on shutdown
+#$ActionQueueType LinkedList   # run asynchronously
+#$ActionResumeRetryCount -1    # infinite retries if host is down
 # remote host is: name/ip:port, e.g. 192.168.0.1:514, port optional
 #*.* @@remote-host:514
-#if $programname == 'iperftcp' then @83.255.229.81 & ~
-#if $programname == 'iperfudp' then @83.255.229.81 & ~
-#if $programname == 'iperf3tcp' then @83.255.229.81 & ~
-#if $programname == 'iperf3udp' then @83.255.229.81 & ~
-
-# ### end of the forwarding rule ###" > /etc/rsyslog.conf
+# ### end of the forwarding rule ###
+" > /etc/rsyslog.conf
 systemctl restart rsyslog
 echo "Syslog installed"
