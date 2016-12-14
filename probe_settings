@@ -32,8 +32,5 @@ echo "/home/chprobe/./smoke-slave"              >> /etc/rc.local
 echo "sleep 15;/home/chprobe/./probemanager update"             >> /etc/rc.local
 # echo "# darkstat -i enp0s25 -p 35631 --syslog"    >> /etc/rc.local
 chmod +x /etc/rc.d/rc.local
-echo '
-# CHPROBE SSH
-Port 34521' >> /etc/ssh/sshd_config
 systemctl restart crond
 echo "Mission complete."
