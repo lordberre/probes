@@ -1,6 +1,6 @@
 #!/bin/bash
 # Install or update probe scripts
-# Version 0.3
+# Version 0.36
 probeurl=http://project-mayhem.se/files/chprobe_latest_$(hostname -d).tgz
 probedefaults=http://project-mayhem.se/files/chprobe_latest_general.tgz
 probedir=/home/chprobe
@@ -9,11 +9,12 @@ managerurl=http://project-mayhem.se/files/probemanager
 case "$1" in
   installation)
   echo 'Updating Manager'
+  pushd $probedir/
   rm $probedir/probemanager*;sleep 1; wget --no-cache $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
   echo 'Downloading & installing probe'
   wget --no-cache $probeurl -P $probedir/
   sleep 10
-  tar xvfz $probedir/chprobe_latest_$(hostname -d).tgz
+  tar xvfz $probedir/chprobe_latest_$(hostname -d).tgz -C $probedir/
   sleep 5
   chmod +x $probedir/probe_settings
   chmod +x $probedir/fw-rules
@@ -46,13 +47,14 @@ echo "We're done"
     ;;
   update)
   echo 'Updating Manager'
+  pushd $probedir/
   rm $probedir/probemanager*; sleep 1; wget --no-cache $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
   echo 'Backing up probe'
   tar cvfz chprobe_backup-$(date +"%d%m%y"-"%H%M" | tr -d '-').tgz $probedir/
   echo 'Downloading & updating probe'
   rm $probedir/chprobe_latest_$(hostname -d).tgz*; sleep 1; wget --no-cache $probeurl -P $probedir/
   sleep 10
-  tar xvfz $probedir/chprobe_latest_$(hostname -d).tgz
+  tar xvfz $probedir/chprobe_latest_$(hostname -d).tgz -C $probedir/
   sleep 5
   chmod +x $probedir/probe_settings
   chmod +x $probedir/fw-rules
@@ -75,6 +77,7 @@ echo "We're done"
     ;;
   restoredefault)
   echo 'Updating Manager'
+  pushd $probedir/
   rm $probedir/probemanager*;sleep 1;wget --no-cache $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
   echo 'Cleaning up'
   rm -Rf $probedir/* /etc/rc.d/rc.local /etc/rsyslog.conf
@@ -82,7 +85,7 @@ echo "We're done"
   sleep 1
   wget --no-cache $probedefaults -P $probedir/
   sleep 10
-  tar xvfz $probedir/chprobe_latest_general.tgz
+  tar xvfz $probedir/chprobe_latest_general.tgz -C $probedir/
   sleep 5
   chmod +x $probedir/probe_settings
   chmod +x $probedir/fw-rules
