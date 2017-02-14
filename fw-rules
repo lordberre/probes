@@ -12,7 +12,6 @@ iptables -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
 iptables -A INPUT -s 83.255.251.77 -j ACCEPT
 
 # mgmt
-iptables -A INPUT -s 192.168.0.1/32 -p icmp -j ACCEPT
 iptables -A INPUT -s 83.255.225.14/32 -p icmp -j ACCEPT
 iptables -A INPUT -s 83.248.145.173/32 -p icmp -j ACCEPT
 iptables -A INPUT -s 192.168.0.1/32 -p tcp --dport 34521 -j ACCEPT
@@ -24,6 +23,9 @@ iptables -A INPUT -s 94.137.97.98/32 -p tcp --dport 34521 -j ACCEPT
 # Allow SSH from local subnets
 iptables -A INPUT -s 192.168.0.1/24 -p tcp --dport 34521 -j ACCEPT
 iptables -A INPUT -s 192.168.1.1/24 -p tcp --dport 34521 -j ACCEPT
+
+# uPnP
+iptables -A INPUT -s $(/sbin/ip route | awk '/default/ { print $3 }') -j ACCEPT
 
 # darkstat
 # iptables -A INPUT -p tcp -m tcp --dport 35631 -j ACCEPT
