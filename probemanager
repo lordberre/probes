@@ -24,7 +24,6 @@ case "$1" in
   chmod +x $probedir/smoke-slave
   chmod +x $probedir/smoke-slave-debug
   chmod +x $probedir/smokeslave_fakepost
-  chmod +x $probedir/syslog_probe.conf
   chmod +x $probedir/udp_iperf3* $probedir/udp_iperf2* $probedir/tcp_iperf3* $probedir/tcp_iperf2*
   chmod +x $probedir/upnpc-probe.sh
   echo "Backing up rc.local"
@@ -63,7 +62,6 @@ echo "We're done"
   chmod +x $probedir/smoke-slave
   chmod +x $probedir/smoke-slave-debug
   chmod +x $probedir/smokeslave_fakepost
-  chmod +x $probedir/syslog_probe.conf
   chmod +x $probedir/udp_iperf3* $probedir/udp_iperf2* $probedir/tcp_iperf3* $probedir/tcp_iperf2*
   chmod +x $probedir/upnpc-probe.sh
   sleep 1
@@ -93,7 +91,6 @@ echo "We're done"
   chmod +x $probedir/smoke-slave
   chmod +x $probedir/smoke-slave-debug
   chmod +x $probedir/smokeslave_fakepost
-  chmod +x $probedir/syslog_probe.conf
   chmod +x $probedir/udp_iperf3* $probedir/udp_iperf2* $probedir/tcp_iperf3* $probedir/tcp_iperf2*
   chmod +x $probedir/upnpc-probe.sh
   echo "Backing up rc.local"
