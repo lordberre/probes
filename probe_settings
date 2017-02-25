@@ -1,4 +1,5 @@
 #!/bin/bash
+probedir=/home/chprobe
 # crontab
 echo "SHELL=/bin/bash
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
@@ -23,7 +24,7 @@ echo "5  7   *  *  6  root /home/chprobe/./probemanager update > /dev/null" >> /
 echo "5  8   *  1  *  root rm -Rf /home/chprobe/chprobe_backup* > /dev/null" >> /etc/crontab
 
 # rc.local
-echo "Installing probe rc.local"
+echo "Installing probe rc.local and syslog"
 echo "#!/bin/bash
 # CHPROBE RC.LOCAL MOD" > /etc/rc.local
 echo "touch /var/lock/subsys/local" >> /etc/rc.local
@@ -32,6 +33,9 @@ echo "/home/chprobe/./smoke-slave"              >> /etc/rc.local
 echo "sleep 15;/home/chprobe/./probemanager update"             >> /etc/rc.local
 echo "/home/chprobe/./upnpc-probe.sh" >> /etc/rc.local
 # echo "# darkstat -i enp0s25 -p 35631 --syslog"    >> /etc/rc.local
+mv $probedir/chprobe_syslog.conf /etc/rsyslog.d/
 chmod +x /etc/rc.d/rc.local
+sleep 1
 systemctl restart crond
+systemctl restart rsyslog
 echo "Mission complete."
