@@ -1,6 +1,6 @@
 #!/bin/bash
 # Version 0.6
-target="$(curl -s project-mayhem.se/probes/ip-udp.txt)"
+target="$(curl -s project-mayhem.se/probes/ip-wifi.txt)"
 count=$(( ( RANDOM % 9999 )  + 1 ))
 iwnic=$(ifconfig | grep wl | awk '{print $1}' | tr -d ':')
 data=$(tail /var/log/iperf3udp.log | egrep $count | awk '{print $11,$14,$9}' | tr -d '(%)' | sed 's/ /,/g')
