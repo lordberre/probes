@@ -1,6 +1,6 @@
 #!/bin/bash
 # Version 0.961 (logstash)
-direction=upload
+direction=upstream
 target="$(curl -s project-mayhem.se/probes/ip.txt)"
 count=$(( ( RANDOM % 9999 )  + 100 ))
 
