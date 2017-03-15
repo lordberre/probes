@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/local/Cellar/bash/4.4.12/bin/bash -xx
 # Version 0.96
 target="$(curl -s project-mayhem.se/probes/ip.txt)"
 count=$(( ( RANDOM % 9999 )  + 100 ))
@@ -21,7 +21,7 @@ case "$(pgrep -f "iperf3 --client" | wc -w)" in
     sleep 15
     rrdtool update /home/chprobe/tcpdb_$(hostname -d).rrd --template upstream N:$(tail /var/log/iperf3tcp.log | egrep $count | awk '{print $7}')
 ;;
-*)  echo "[chprobe_iperf3] multiple instances of iperf udp daemon running. Stopping & restarting iperf:" | logger -p info
-    kill $(pgrep -f "iperf3 --client" | awk '{print $1}')
-    ;;
+# *)  echo "[chprobe_iperf3] multiple instances of iperf udp daemon running. Stopping & restarting iperf:" | logger -p info
+#    kill $(pgrep -f "iperf3 --client" | awk '{print $1}')
+#    ;;
 esac;
