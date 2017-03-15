@@ -20,13 +20,13 @@ case $(pgrep -f "iperf3 --client" | wc -w | tr -d ' ') in
     while iperf3 -c $target -t 1 | grep busy; do sleep $[ ( $RANDOM % 5 ) + 3]s  && echo '[chprobe_iperf3] waiting cuz server is busy' | logger -p info;done
     echo "[chprobe_iperf3] Starting the tcp daemon - $direction" | logger -p info
     /usr/local/bin/iperf3 --client $target -T $direction -P 15 -R -w 1m 2>&1 | egrep 'SUM.*rece' | awk '/Mbits\/sec/ {print $1,$7}' | tr -d ':' | eval $maclogformat2 >>$maclogdir & echo "[chprobe_iperf3] tcp daemon started" | logger -p info
-    eval $run_airport | eval $maclogformat >> $maclogdir
+    eval $run_airport | sed -e "s/^/$direction /" | eval $maclogformat >> $maclogdir
 ;;
 1)  echo "[chprobe_iperf3] iperf tcp daemon is already running" | logger -p info
 	while pgrep -f "iperf3 --client" | wc -w | grep 1; do sleep $[ ( $RANDOM % 5 ) + 3]s && echo '[chprobe_iperf3] waiting cuz a daemon is running' | logger -p info;done
 	    echo "[chprobe_iperf3] Starting the tcp daemon - $direction" | logger -p info
 	        /usr/local/bin/iperf3 --client $target -T $direction -P 15 -R -w 1m 2>&1 | egrep 'SUM.*rece' | awk '/Mbits\/sec/ {print $1,$7}' | tr -d ':' | eval $maclogformat2 >>$maclogdir & echo "[chprobe_iperf3] tcp daemon started" | logger -p info
-        eval $run_airport | eval $maclogformat >> $maclogdir
+        eval $run_airport | sed -e "s/^/$direction /" | eval $maclogformat >> $maclogdir
 		;;
 *)  echo "[chprobe_iperf3] multiple instances of iperf udp daemon running. Stopping & restarting iperf:" | logger -p info
     kill $(pgrep -f "iperf3 --client" | awk '{print $1}')
