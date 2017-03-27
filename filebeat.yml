@@ -19,7 +19,7 @@ filebeat.prospectors:
 
   # Paths that should be crawled and fetched. Glob based paths.
   paths:
-      - /var/log/iperf3*  
+      - /var/log/iperf3*.log
     #- c:\programdata\elasticsearch\logs\*
 
   # Type to be published in the 'type' field. For Elasticsearch output,
