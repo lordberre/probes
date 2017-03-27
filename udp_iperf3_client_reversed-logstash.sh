@@ -8,7 +8,7 @@ count=$(( ( RANDOM % 9999 )  + 1 ))
 ### WiFi stuff
 phy=ht
 iwnic=$(ifconfig | grep wl | awk '{print $1}' | tr -d ':')
-iwdetect="$(ifconfig | egrep wl | wc -l)"
+iwdetect="$(grep up /sys/class/net/wl*/operstate | wc -l)"
 # $htparse=iw $iwnic station dump | egrep 'tx bitrate|signal:' | xargs | sed 's/\[.*\]//' | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e "s/^/$direction /" | awk '{print $1,$3,$7,$10,$11,$12,$13}' | tr -d 'MHz' | logger -t tx_linkstats_$phy[$(echo $count)] -p $logfacility && iw $iwnic station dump | egrep 'rx bitrate|signal' | xargs | sed 's/\[.*\]//' | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e "s/^/$direction /" | awk '{print $1,$3,$7,$10,$11,$12,$13}' | tr -d 'MHz' | logger -t rx_linkstats_$phy[$(echo $count)] -p $logfacility && iw $iwnic station dump | egrep 'bytes|packets|retries|failed' | xargs | tr -d 'rx|tx|bytes|packets|retries|failed:' | tr -s ' ' | logger -t iw_counters[$(echo $count)] -p $logfacility
 
 # $vhtparse=iw $iwnic station dump | egrep 'tx bitrate|signal' | xargs | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e "s/^/$direction /" | awk '{print $1,$3,$15,$18,$19,$20}' | tr -d 'MHz' | logger -t tx_linkstats_$phy[$(echo $count)] -p $logfacility && iw $iwnic station dump | egrep 'rx bitrate|signal' | xargs | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e "s/^/$direction /" | awk '{print $1,$3,$15,$18,$19,$20}' | tr -d 'MHz' | logger -t rx_linkstats_$phy[$(echo $count)] -p $logfacility && iw $iwnic station dump | egrep 'bytes|packets|retries|failed' | xargs | tr -d 'rx|tx|bytes|packets|retries|failed:' | tr -s ' ' | logger -t iw_counters[$(echo $count)] -p $logfacility

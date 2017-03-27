@@ -8,7 +8,7 @@ count=$(( ( RANDOM % 9999 )  + 100 ))
 ### WiFi stuff
 phy=vht # What PHY?
 iwnic=$(ifconfig | grep wl | awk '{print $1}' | tr -d ':')
-iwdetect="$(ifconfig | egrep wl | wc -l)"
+iwdetect="$(grep up /sys/class/net/wl*/operstate | wc -l)"
 # iw $iwnic link | egrep 'bitrate|signal' | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | xargs | sed -e "s/^/$direction /" | awk '{print $1,$3,$7,$10,$11,$12,$13}' | tr -d 'MHz' # VHT template
 # iw $iwnic link | egrep 'flags|bitrate|signal' | xargs | sed -e "s/^/$direction /" | awk '{print $1,$3,$7,$10,$11,$12}' | tr -d MHz # HT template
 #logevent='"$(logger -p info)"'
