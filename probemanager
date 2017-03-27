@@ -1,6 +1,6 @@
 #!/bin/bash
 # Install or update probe scripts
-# Version 0.37
+# Version 0.38
 probeurl=http://project-mayhem.se/files/chprobe_latest_$(hostname -d).tgz
 probedefaults=http://project-mayhem.se/files/chprobe_latest_general.tgz
 probedir=/home/chprobe
@@ -8,6 +8,7 @@ managerurl=http://project-mayhem.se/files/probemanager
 
 case "$1" in
   installation)
+  yum install -y  wget rrdtool
   echo 'Updating Manager'
   pushd $probedir/
   rm -f $probedir/probemanager*;sleep 1; wget --no-cache $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
