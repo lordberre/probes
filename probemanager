@@ -70,6 +70,9 @@ echo "We're done"
   /bin/bash $probedir/./probe_settings
   mv $probedir/fw-rules /root/fw-rules
   rm -f $probedir/probemanager*; sleep 1; wget --no-cache $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
+# Temporary space #
+  mkdir /root/backups
+# Temporary space #
   echo "We're done"
     ;;
   restoredefault)
