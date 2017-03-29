@@ -1,4 +1,5 @@
 #!/bin/bash
+# Inofficial file, don't use this
 # Install or update probe scripts
 # Version 0.39
 probeurl=http://project-mayhem.se/files/chprobe_latest_$(hostname -d).tgz
