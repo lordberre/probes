@@ -1,1 +1,3 @@
+#!/bin/bash
+curl http://project-mayhem.se --data-ascii DATA -A $(hostname -d)
 curl http://project-mayhem.se --data-ascii DATA -A smokeping-slave
