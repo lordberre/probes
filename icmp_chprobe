@@ -1,0 +1,8 @@
+#!/bin/bash
+# Version 0.0002
+count=$(( ( RANDOM % 9999 )  + 100 ))
+icmp_size=$3
+icmp_target=$4
+deadline=$1
+interval=$2
+ping -q -w $deadline -i $interval -s $icmp_size $icmp_target | xargs | sed 's/\<loss\>//g' | awk '{print $2,$26,$18,$20}' | tr -d ',' | sed 's!/! !' | sed 's!/! !' | sed 's!/! !' | tr -d '%' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_icmp[$(echo $count)]: $icmp_size $interval /" >>/var/log/chprobe_icmp.log
