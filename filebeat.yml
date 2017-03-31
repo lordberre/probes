@@ -20,6 +20,7 @@ filebeat.prospectors:
   # Paths that should be crawled and fetched. Glob based paths.
   paths:
       - /var/log/iperf3*.log
+      - /var/log/chprobe*.log
     #- c:\programdata\elasticsearch\logs\*
 
   # Type to be published in the 'type' field. For Elasticsearch output,
@@ -95,7 +96,7 @@ filebeat.prospectors:
 #----------------------------- Logstash output --------------------------------
 output.logstash:
   # The Logstash hosts
-  hosts: ["#:5044"]
+  hosts: ["project-mayhem.se:5044"]
 
   # Optional SSL. By default is off.
   # List of root certificates for HTTPS server verifications

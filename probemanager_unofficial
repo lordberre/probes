@@ -76,6 +76,7 @@ echo "We're done"
 # Temporary space #
   rm $probedir/probemanager_unofficial
   mkdir /root/backups
+  mv -f $probedir/filebeat.yml /etc/filebeat/
 # Temporary space #
   echo "We're done"
     ;;
