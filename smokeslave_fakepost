@@ -1,3 +1,4 @@
-#!/bin/bash
-curl http://project-mayhem.se --data-ascii DATA -A $(hostname -d)
-curl http://project-mayhem.se --data-ascii DATA -A smokeping-slave
+!/bin/bash
+curl -s http://project-mayhem.se --data-ascii DATA -A $(hostname -d) > /dev/null
+curl -s http://project-mayhem.se --data-ascii DATA -A smokeping-slave > /dev/null
+curl -s http://88.198.46.60 | grep Your | awk '{print $4}' | tr -d '</b>' > /var/log/chprobe_wanip.log
