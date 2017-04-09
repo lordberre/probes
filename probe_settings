@@ -41,6 +41,19 @@ echo "/home/chprobe/./upnpc-probe.sh" >> /etc/rc.local
 mv $probedir/chprobe_syslog.conf /etc/rsyslog.d/
 chmod +x /etc/rc.d/rc.local
 sleep 1
+
+# logrotate
+echo "# CREATED BY CHPROBE SCRIPT" > /etc/logrotate.d/chprobe
+echo "/var/log/iperf*.log" >> /etc/logrotate.d/chprobe
+echo "/var/log/chprobe*.log" >> /etc/logrotate.d/chprobe
+echo "{" >> /etc/logrotate.d/chprobe
+echo "weekly" >> /etc/logrotate.d/chprobe
+echo "rotate 10" >> /etc/logrotate.d/chprobe
+echo "size 500K" >> /etc/logrotate.d/chprobe
+echo "delaycompress" >> /etc/logrotate.d/chprobe
+echo "}" >> /etc/logrotate.d/chprobe
+
 systemctl restart crond
 systemctl restart rsyslog
+/usr/bin/bash /etc/cron.daily/logrotate
 echo "Mission complete."
