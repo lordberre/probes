@@ -54,6 +54,7 @@ echo "We're done"
 #  tar cvfz chprobe_backup-$(date +"%d%m%y"-"%H%M" | tr -d '-').tgz $probedir/	# Don't do backups every update
   echo 'Downloading & updating probe'
   rm -f $probedir/chprobe_latest_$(hostname -d).tgz*; sleep 1; wget --no-cache $probeurl -P $probedir/
+  rm -f $probedir/version-*
   sleep 10
   tar xvfz $probedir/chprobe_latest_$(hostname -d).tgz -C $probedir/
   sleep 5
@@ -75,8 +76,9 @@ echo "We're done"
   rm -f $probedir/probemanager*; sleep 1; wget --no-cache $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
 # Temporary space #
   rm $probedir/probemanager_unofficial
-  mkdir /root/backups
-  mv -f $probedir/filebeat.yml /etc/filebeat/
+#  mkdir /root/backups
+#  mv $probedir/filebeat.yml /etc/filebeat/filebeat.yml
+#  systemctl restart filebeat
 # Temporary space #
   echo "We're done"
     ;;
