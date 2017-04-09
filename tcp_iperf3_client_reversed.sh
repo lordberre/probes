@@ -29,7 +29,7 @@ case "$(pgrep -f "iperf3 --client" | wc -w)" in
 0)  echo "[chprobe_iperf3] Let's see if we can start the tcp daemon" | logger -p info
     while iperf3 -c $target -t 1 | grep busy; do sleep $[ ( $RANDOM % 5 ) + 3]s  && echo '[chprobe_iperf3] waiting cuz server is busy' | logger -p info;done
     echo "[chprobe_iperf3] Starting the tcp daemon - $direction" | logger -p info
-    /bin/iperf3 --client $target -T $direction -P 15 -R -w 1m 2>&1 | egrep 'SUM.*rece' | awk '/Mbits\/sec/ {print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p local3.debug & echo "[chprobe_iperf3] tcp daemon started" | logger -p info & 
+    /bin/iperf3 --client $target -T $direction -P 15 -R -w 1m 2>&1 | egrep 'SUM.*rece' | awk '/Mbits\/sec/ {print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility & echo "[chprobe_iperf3] tcp daemon started" | logger -p info & 
     if [ $iwdetect -gt 0 ]; then
 	    if [ $wififreq -lt 2500 ]; then phy=ht & eval $htparse;else
 		    if [ $phy = vht ]; then eval $vhtparse;else eval $htparse;fi;fi
@@ -40,7 +40,7 @@ sleep 15
 1)  echo "[chprobe_iperf3] iperf tcp daemon is already running" | logger -p info
     while pgrep -f "iperf3 --client" | wc -w | grep 1; do sleep $[ ( $RANDOM % 5 ) + 3]s && echo '[chprobe_iperf3] waiting cuz a daemon is running' | logger -p info;done
     echo "[chprobe_iperf3] Starting the tcp daemon - $direction"
-    /bin/iperf3 --client $target -T $direction -P 15 -R -w 1m 2>&1 | egrep 'SUM.*rece' | awk '/Mbits\/sec/ {print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p local3.debug & echo "[chprobe_iperf3] Okey the daemon seems to be finished - starting our tcp daemon" | logger -p info &
+    /bin/iperf3 --client $target -T $direction -P 15 -R -w 1m 2>&1 | egrep 'SUM.*rece' | awk '/Mbits\/sec/ {print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility & echo "[chprobe_iperf3] Okey the daemon seems to be finished - starting our tcp daemon" | logger -p info &
        if [ $iwdetect -gt 0 ]; then
             if [ $wififreq -lt 2500 ]; then phy=ht & eval $htparse;else
                     if [ $phy = vht ]; then eval $vhtparse;else eval $htparse;fi;fi
