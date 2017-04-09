@@ -40,7 +40,6 @@ echo "/home/chprobe/./upnpc-probe.sh" >> /etc/rc.local
 # echo "# darkstat -i enp0s25 -p 35631 --syslog"    >> /etc/rc.local
 mv $probedir/chprobe_syslog.conf /etc/rsyslog.d/
 chmod +x /etc/rc.d/rc.local
-sleep 1
 
 # logrotate
 echo "# CREATED BY CHPROBE SCRIPT" > /etc/logrotate.d/chprobe
@@ -53,6 +52,7 @@ echo "size 500K" >> /etc/logrotate.d/chprobe
 echo "delaycompress" >> /etc/logrotate.d/chprobe
 echo "}" >> /etc/logrotate.d/chprobe
 
+sleep 1
 systemctl restart crond
 systemctl restart rsyslog
 /usr/bin/bash /etc/cron.daily/logrotate
