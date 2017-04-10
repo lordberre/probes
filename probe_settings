@@ -51,6 +51,11 @@ echo "rotate 10" >> /etc/logrotate.d/chprobe
 echo "size 500K" >> /etc/logrotate.d/chprobe
 echo "delaycompress" >> /etc/logrotate.d/chprobe
 echo "}" >> /etc/logrotate.d/chprobe
+echo "/var/log/chprobe_wanip.txt {" >> /etc/logrotate.d/chprobe
+echo "daily" >> /etc/logrotate.d/chprobe
+echo "rotate 0" >> /etc/logrotate.d/chprobe
+echo "size 200" >> /etc/logrotate.d/chprobe
+echo "}" >> /etc/logrotate.d/chprobe
 
 sleep 1
 systemctl restart crond
