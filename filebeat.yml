@@ -21,6 +21,7 @@ filebeat.prospectors:
   paths:
       - /var/log/iperf3*.log
       - /var/log/chprobe*.log
+      - /var/log/chprobe_wanip.txt
     #- c:\programdata\elasticsearch\logs\*
 
   # Type to be published in the 'type' field. For Elasticsearch output,
