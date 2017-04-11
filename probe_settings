@@ -26,7 +26,7 @@ echo "*/20 *  *  *  * root /home/chprobe/./smokeslave_fakepost > /dev/null" >> /
 echo "*/2  *  *  *  * root /home/chprobe/./icmp_chprobe 100 1 54 ping.sunet.se >> /dev/null" >> /etc/crontab
 echo "*/2  *  *  *  * root /home/chprobe/./icmp_chprobe 100 1 1800 sunet.se >> /dev/null" >> /etc/crontab
 echo "*/2  *  *  *  * root /home/chprobe/./icmp_chprobe 100 0.5 54 ping.sunet.se >> /dev/null" >> /etc/crontab
-
+echo "*/15 *  *  *  * root /home/chprobe/./bbk_chprobe > /dev/null" >> /etc/crontab
 
 # rc.local
 echo "Installing probe rc.local and syslog"
