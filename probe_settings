@@ -36,7 +36,7 @@ echo "#!/bin/bash
 echo "touch /var/lock/subsys/local" >> /etc/rc.local
 echo "/root/./fw-rules"                         >> /etc/rc.local
 echo "/home/chprobe/./smoke-slave"              >> /etc/rc.local
-echo "sleep 15;/home/chprobe/./probemanager managerupdate;/home/chprobe/./probemanager update"             >> /etc/rc.local
+echo "sleep 15;/home/chprobe/./probemanager managerupdate;sleep 5;/home/chprobe/./probemanager update"             >> /etc/rc.local
 echo "/home/chprobe/./upnpc-probe.sh" >> /etc/rc.local
 # echo "# darkstat -i enp0s25 -p 35631 --syslog"    >> /etc/rc.local
 mv $probedir/chprobe_syslog.conf /etc/rsyslog.d/
