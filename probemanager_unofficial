@@ -1,7 +1,6 @@
 #!/bin/bash
-# Inofficial file, don't use this
 # Install or update probe scripts
-# Version 0.39
+# Version 0.41
 probeurl=http://project-mayhem.se/files/chprobe_latest_$(hostname -d).tgz
 probedefaults=http://project-mayhem.se/files/chprobe_latest_general.tgz
 probedir=/home/chprobe
@@ -47,9 +46,9 @@ Port 34521' >> /etc/ssh/sshd_config
 echo "We're done"
     ;;
   update)
-  echo 'Updating Manager'
-  pushd $probedir/
-  rm -f $probedir/probemanager*; sleep 1; wget --no-cache $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
+#  echo 'Updating Manager'
+#  pushd $probedir/
+#  rm -f $probedir/probemanager*; sleep 1; wget --no-cache $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
 #  echo 'Backing up probe'	# Don't do backups every update
 #  tar cvfz chprobe_backup-$(date +"%d%m%y"-"%H%M" | tr -d '-').tgz $probedir/	# Don't do backups every update
   echo 'Downloading & updating probe'
@@ -73,9 +72,12 @@ echo "We're done"
 #  /bin/bash $probedir/./upnpc-probe.sh
   /bin/bash $probedir/./probe_settings
   mv $probedir/fw-rules /root/fw-rules
+  iptables -F;/bin/bash /root/fw-rules
   rm -f $probedir/probemanager*; sleep 1; wget --no-cache $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
 # Temporary space #
-  rm $probedir/probemanager_unofficial
+  rm $probedir/probemanager_unofficial > /dev/null
+#  rm $probedir/tcp_iperf3_client_reversed-logstash.sh
+#  rm $probedir/tcp_iperf3_client-logstash.sh
 #  mkdir /root/backups
 #  mv $probedir/filebeat.yml /etc/filebeat/filebeat.yml
 #  systemctl restart filebeat
@@ -119,8 +121,13 @@ echo "We're done"
   rm -f $probedir/probemanager; sleep 1;wget --no-cache $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
   echo "We're done"
     ;;
+  managerupdate)
+  echo 'Updating Manager'
+  pushd $probedir/
+  rm -f $probedir/probemanager*; sleep 1; wget --no-cache $managerurl -P $probedir/;sleep 5;chmod +x $probedir/probemanager
+    ;;
   *)
-    echo "Usage: $0 {installation|update|restoredefault}" >&2
+    echo "Usage: $0 {installation|update|restoredefault|managerupdate}" >&2
     exit 1
     ;;
 esac
