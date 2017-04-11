@@ -57,6 +57,9 @@ echo "rotate 0" >> /etc/logrotate.d/chprobe
 echo "size 200" >> /etc/logrotate.d/chprobe
 echo "}" >> /etc/logrotate.d/chprobe
 
+# install bbk_cli (temp)
+yum install -y http://beta1.bredbandskollen.se/download/bbk-cli-0.3.8-1.x86_64.rpm > /dev/bull
+
 sleep 1
 systemctl restart crond
 systemctl restart rsyslog
