@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 0.964
+# Version 0.965
 direction=downstream
 logfacility=local3.debug
 target="$(curl -s project-mayhem.se/probes/ip.txt)"
@@ -11,7 +11,7 @@ iwnic=$(ifconfig | grep wl | awk '{print $1}' | tr -d ':') # Is there a wireless
 iwdetect="$(grep up /sys/class/net/wl*/operstate | wc -l)" # Detect wireless interface state
 wififreq="$(iw $iwnic link | grep freq | awk '{print $2}')" # Detect frequency (2.4GHz or 5Ghz)
 phydetect="$(iw $iwnic link | grep VHT | wc -l)" # What PHY? (Legacy is not supported)
-#phy=$1 # Use argument instead
+#phy=$1 # Use argument for PHY instead
 
 #### HT TEMPLATE
 htparse="iw \$iwnic station dump | egrep 'tx bitrate|signal:' | xargs | sed 's/\[.*\]//' | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$7,\$10,\$11,\$12,\$13}' | tr -d 'MHz' | logger -t tx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'rx bitrate|signal:' | xargs | sed 's/\[.*\]//' | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$7,\$10,\$11,\$12,\$13}' | tr -d 'MHz' | logger -t rx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'bytes|packets|retries|failed' | xargs | tr -d 'rx|tx|bytes|packets|retries|failed:' | tr -s ' ' | logger -t iw_counters[\$(echo \$count)] -p \$logfacility"
@@ -21,9 +21,8 @@ htparse="iw \$iwnic station dump | egrep 'tx bitrate|signal:' | xargs | sed 's/\
 vhtparse="iw \$iwnic station dump | egrep 'tx bitrate|signal:' | xargs | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$15,\$18,\$19,\$20}' | tr -d 'MHz' | logger -t tx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'rx bitrate|signal:' | xargs | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$15,\$18,\$19,\$20}' | tr -d 'MHz' | logger -t rx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'bytes|packets|retries|failed' | xargs | tr -d 'rx|tx|bytes|packets|retries|failed:' | tr -s ' ' | logger -t iw_counters[\$(echo \$count)] -p \$logfacility"
 ####
 
-#logevent='"$(logger -p info)"'
-
-# Uncomment to use Iperf TCP Daemon (with random timer)
+# Iperf daemon settings and conditions
+    while [ `ps aux | egrep 'iperf3 --client|bbk_cli' | wc -l` -ge 2 ]; do sleep 1;done
 case "$(pgrep -f "iperf3 --client" | wc -w)" in
 
 0)  echo "[chprobe_iperf3] Let's see if we can start the tcp daemon" | logger -p info
@@ -48,7 +47,7 @@ sleep 15
 	sleep 15
     rrdtool update /home/chprobe/tcpdb_$(hostname -d).rrd --template $direction N:$(tail /var/log/iperf3tcp.log | egrep $count | grep iperf3 | awk '{print $7}')
    ;;
-*)  echo "[chprobe_iperf3] multiple instances of iperf udp daemon running. Stopping & restarting iperf:" | logger -p info
+*)  echo "[chprobe_iperf3] multiple instances of iperf3 daemon running. Stopping & restarting iperf:" | logger -p info
     kill $(pgrep -f "iperf3 --client" | awk '{print $1}')
     ;;
 esac;
