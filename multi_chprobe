@@ -1,0 +1,58 @@
+#!/bin/bash -x
+# Version 0.0001
+
+# We wait until bbk/iperf3 daemons are done so we don't collide
+collide_condition="$(ps aux | egrep 'iperf|bbk_cl' | wc -l)"
+while [ `ps aux | egrep 'iperf|bbk_cl' | wc -l` -ge 2 ];do sleep 0.5;done
+count=$(( ( RANDOM % 9999 )  + 100 ))
+
+while true
+do
+        case "$1" in
+                -w)
+shift
+duration=$3
+http_target=$4
+threads=$1
+connections=$2
+http_target2=$(echo $http_target | sed "s/http://g" | tr -d '/')
+wrk -t $threads -c $connections -d $duration $http_target | egrep -v 'Thread|threads|Running' | xargs | sed "s/2xx//g" | sed "s/3xx//g" | tr -d ':|Requests|sec|Transfer|Socket|errors|requests|connect|read|write|,|timeout|Latency|Avg|Stdev|Max|+|-|/|Stdev|%|B|p|K|M|Non|-' | tr -s ' ' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname) chprobe_wrk[$(echo $count)]: $threads $connections $http_target2/" >>/var/log/chprobe_wrk.log
+                           ;;
+                -e)
+shift
+service=https # For tagging the log
+http_target=$1
+http_target2=$(echo $http_target | sed "s/http://g" | tr -d '/')
+/usr/bin/echoping -P 0xa0 -p 6 -t 20 -w 1 -4 -C -h / -A -a -R -n 5 $http_target | egrep 'Average|Maximum|Minimum' | awk '{print $3}' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname) chprobe_https[$(echo $count)]: $service $http_target2 /" >>/var/log/chprobe_https.log
+                       ;;
+		-d)
+shift
+dns=$1
+domain=$2
+for z in {1..10};do
+ for x in {TXT,MX,A,CNAME};do /usr/bin/dig @$dns $domain $x && sleep 1;done | grep time | xargs | tr -d 'Query|time|msec|;;|:' | tr -s ' ' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_dns[$(echo $count)]: $dns $domain/"
+done
+;;
+                                -h)  cat <<USAGE
+usage: $0 [-e] [-w] [-h] [-d] args
+
+    -h) See help
+    -w) Use wrk binary 
+    -e) Use echoping binary
+    -d) Use dig binary
+USAGE
+            exit 1
+            ;;
+        *)
+#            echo Use -h for help!
+            break;
+            ;;
+    esac
+
+    shift
+done
+
+for p in "$@"
+do
+    echo "Non-option argument: '$p'"
+done
