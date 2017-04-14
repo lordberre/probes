@@ -1,9 +1,8 @@
-#!/bin/bash -x
+#!/bin/bash
 # Version 0.0001
 
 # We wait until bbk/iperf3 daemons are done so we don't collide
-collide_condition="$(ps aux | egrep 'iperf|bbk_cl' | wc -l)"
-while [ `ps aux | egrep 'iperf|bbk_cl' | wc -l` -ge 2 ];do sleep 0.5;done
+while [ `pgrep 'iperf|bbk_cli' | wc -l` -ge 2 ];do sleep 0.5;done
 count=$(( ( RANDOM % 9999 )  + 100 ))
 
 while true
