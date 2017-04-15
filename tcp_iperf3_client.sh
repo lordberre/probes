@@ -21,7 +21,7 @@ vhtparse="iw \$iwnic station dump | egrep 'tx bitrate|signal:' | xargs | tr -d '
 ####
 
 # Iperf daemon and condititions
-while [ `ps aux | egrep 'iperf3 --client|bbk_cli' | wc -l` -ge 2 ];do sleep 1;done
+        while [ `pgrep -f 'bbk_cli|wrk' | wc -w` -ge 1 ];do sleep 0.5
 case "$(pgrep -f "iperf3 --client" | wc -w)" in
 
 0)  echo "[chprobe_iperf3] Let's see if we can start the tcp daemon" | logger -p info
@@ -36,7 +36,7 @@ case "$(pgrep -f "iperf3 --client" | wc -w)" in
     rrdtool update /home/chprobe/tcpdb_$(hostname -d).rrd --template $direction N:$(tail /var/log/iperf3tcp.log | egrep $count | grep iperf3 | awk '{print $7}')    
 ;;
 1)  echo "[chprobe_iperf3] iperf tcp daemon is already running" | logger -p info
-    while [ `ps aux | egrep 'iperf3 --client|bbk_cli' | wc -l` -ge 2 ]; do sleep $[ ( $RANDOM % 5 ) + 3]s && echo '[chprobe_iperf3] waiting cuz either an iperf3 or a bbk daemon is running' | logger -p info;done
+          while [ `pgrep -f 'iperf3 --client|bbk_cli|wrk' | wc -w` -ge 1 ];do sleep $[ ( $RANDOM % 5 ) + 3]s && echo '[chprobe_iperf3] waiting cuz either an iperf3 or a bbk daemon is running' | logger -p info;done
 echo "[chprobe_iperf3] Starting the tcp daemon - $direction" | logger -p info
     /bin/iperf3 --client $target -T $direction -P 15 -w 1m 2>&1 | egrep 'SUM.*rece' | awk '/Mbits\/sec/ {print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility & echo "[chprobe_iperf3] Okey the daemon seems to be finished - starting our tcp daemon" | logger -p info &
         if [ $iwdetect -gt 0 ]; then
