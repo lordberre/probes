@@ -3,7 +3,7 @@
 count=$(( ( RANDOM % 9999 )  + 100 ))
 
 # Wait until other daemons are done so we don't collide
-while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 1 ];do sleep 0.5 && echo chprobe_multi[$(echo $count)] Other daemons are running, waiting a bit. | logger -p notice
+while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 1 ];do sleep 0.5 && echo chprobe_multi[$(echo $count)] Other daemons are running, waiting a bit. | logger -p notice;done
 
 while true
 do

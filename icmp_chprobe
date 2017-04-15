@@ -7,6 +7,6 @@ deadline=$1
 interval=$2
 
 # We wait until bbk/iperf3 daemons are done so we don't collide
-while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 1 ];do sleep 0.5 && echo chprobe_icmp[$(echo $count)] Other daemons are running, waiting a bit. | logger -p notice
+while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 1 ];do sleep 0.5 && echo chprobe_icmp[$(echo $count)] Other daemons are running, waiting a bit. | logger -p notice;done
 
 ping -q -w $deadline -i $interval -s $icmp_size $icmp_target | xargs | sed 's/\<loss\>//g' | awk '{print $2,$26,$18,$20}' | tr -d ',' | sed 's!/! !' | sed 's!/! !' | sed 's!/! !' | tr -d '%' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_icmp[$(echo $count)]: $icmp_size $interval /" >>/var/log/chprobe_icmp.log
