@@ -22,7 +22,7 @@ vhtparse="iw \$iwnic station dump | egrep 'tx bitrate|signal:' | xargs | tr -d '
 ####
 
 # Iperf daemon settings and conditions
-	while [ `pgrep -f 'bbk_cli|wrk' | wc -w` -ge 1 ];do sleep 0.5
+	while [ `pgrep -f 'bbk_cli|wrk' | wc -w` -ge 1 ];do sleep 0.5;done
 case "$(pgrep -f "iperf3 --client" | wc -w)" in
 
 0)  echo "[chprobe_iperf3] Let's see if we can start the tcp daemon" | logger -p info

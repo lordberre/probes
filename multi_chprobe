@@ -19,7 +19,7 @@ wrk -t $threads -c $connections -d $duration $http_target | egrep -v 'Thread|thr
                            ;;
                 -e)
 shift
-service=https # For tagging the log
+service=echoping # For tagging the log
 http_target=$1
 http_target2=$(echo $http_target | sed "s/http://g" | tr -d '/')
 /usr/bin/echoping -P 0xa0 -p 6 -t 20 -w 1 -4 -C -h / -A -a -R -n 5 $http_target | egrep 'Average|Maximum|Minimum' | awk '{print $3}' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname) chprobe_https[$(echo $count)]: $service $http_target2 /" >>/var/log/chprobe_https.log
@@ -29,7 +29,7 @@ shift
 dns=$1
 domain=$2
 for z in {1..10};do
- for x in {TXT,MX,A,CNAME};do /usr/bin/dig @$dns $domain $x && sleep 1;done | grep time | xargs | tr -d 'Query|time|msec|;;|:' | tr -s ' ' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_dns[$(echo $count)]: $dns $domain/"
+ for x in {TXT,MX,A,CNAME};do /usr/bin/dig @$dns $domain $x && sleep 1;done | grep time | xargs | tr -d 'Query|time|msec|;;|:' | tr -s ' ' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_dns[$(echo $count)]: $dns $domain/" >>/var/log/chprobe_dns.log
 done
 ;;
                                 -h)  cat <<USAGE
