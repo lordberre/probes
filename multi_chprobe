@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 0.0001
+# Version 0.2
 count=$(( ( RANDOM % 9999 )  + 100 ))
 
 # Wait until other daemons are done so we don't collide
@@ -16,7 +16,7 @@ http_target=$4
 threads=$1
 connections=$2
 http_target2=$(echo $http_target | sed "s/http://g" | tr -d '/')
-wrk -t $threads -c $connections -d $duration $http_target | egrep -v 'Thread|threads|Running' | xargs | sed "s/2xx//g" | sed "s/3xx//g" | tr -d ':|Requests|sec|Transfer|Socket|errors|requests|connect|read|write|,|timeout|Latency|Avg|Stdev|Max|+|-|/|Stdev|%|B|p|K|M|Non|-' | tr -s ' ' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_wrk[$(echo $count)]: $threads $connections $http_target2/" >>/var/log/chprobe_wrk.log
+wrk -t $threads -c $connections -d $duration $http_target | sed 's/ms/ /g' | egrep -v 'Thread|threads|Running' | xargs | sed "s/2xx//g" | sed "s/3xx//g" | tr -d ':|Requests|sec|Transfer|Socket|errors|requests|connect|read|write|,|timeout|Latency|Avg|Stdev|Max|+|-|/|Stdev|%|B|p|K|M|Non|-' | tr -s ' ' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_wrk[$(echo $count)]: $threads $connections $http_target2/" >>/var/log/chprobe_wrk.log
                            ;;
                 -e)
 shift
