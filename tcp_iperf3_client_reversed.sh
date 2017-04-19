@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 0.965
+# Version 0.97
 direction=downstream
 logfacility=local3.debug
 target="$(curl -s project-mayhem.se/probes/ip.txt)"
@@ -22,6 +22,7 @@ vhtparse="iw \$iwnic station dump | egrep 'tx bitrate|signal:' | xargs | tr -d '
 ####
 
 # Iperf daemon settings and conditions
+while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 12 ];do kill $(pgrep -f "iperf3|bbk_cli|wrk" | awk '{print $1}') && echo "[chprobe_error] We're overloaded with daemons, killing everything" | logger -p error ; done
 	while [ `pgrep -f 'bbk_cli|wrk' | wc -w` -ge 1 ];do sleep 0.5;done
 case "$(pgrep -f "iperf3 --client" | wc -w)" in
 
