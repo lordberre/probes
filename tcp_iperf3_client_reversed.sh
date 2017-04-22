@@ -31,8 +31,8 @@ case "$(pgrep -f "iperf3 --client" | wc -w)" in
     echo "[chprobe_iperf3] Starting the tcp daemon - $direction" | logger -p info
     /bin/iperf3 --client $target -T $direction -P 15 -R -w 1m 2>&1 | egrep 'SUM.*rece' | awk '/Mbits\/sec/ {print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility & echo "[chprobe_iperf3] tcp daemon started" | logger -p info & 
     if [ $iwdetect -gt 0 ]; then
-	    if [ $wififreq -lt 2500 ]; then phy=ht & eval $htparse;else
-                    if [ $phydetect -ge 1 ]; then phy=vht & eval $vhtparse;else phy=ht eval $htparse;fi;fi	    
+	    if [ $wififreq -lt 2500 ]; then phy=ht && eval $htparse;else
+                    if [ $phydetect -ge 1 ]; then phy=vht && eval $vhtparse;else phy=ht eval $htparse;fi;fi	    
 	    else echo 'No WiFi NIC detected'>/dev/stdout;fi        
 sleep 15
     rrdtool update /home/chprobe/tcpdb_$(hostname -d).rrd --template $direction N:$(tail /var/log/iperf3tcp.log | egrep $count | grep iperf3 | awk '{print $7}')
@@ -42,8 +42,8 @@ sleep 15
     echo "[chprobe_iperf3] Starting the tcp daemon - $direction"
     /bin/iperf3 --client $target -T $direction -P 15 -R -w 1m 2>&1 | egrep 'SUM.*rece' | awk '/Mbits\/sec/ {print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility & echo "[chprobe_iperf3] Okey the daemon seems to be finished - starting our tcp daemon" | logger -p info &
        if [ $iwdetect -gt 0 ]; then
-            if [ $wififreq -lt 2500 ]; then phy=ht & eval $htparse;else
-                    if [ $phydetect -ge 1 ]; then phy=vht & eval $vhtparse;else phy=ht eval $htparse;fi;fi
+            if [ $wififreq -lt 2500 ]; then phy=ht && eval $htparse;else
+                    if [ $phydetect -ge 1 ]; then phy=vht && eval $vhtparse;else phy=ht eval $htparse;fi;fi
             else echo 'No WiFi NIC detected'>/dev/stdout;fi 
 	sleep 15
     rrdtool update /home/chprobe/tcpdb_$(hostname -d).rrd --template $direction N:$(tail /var/log/iperf3tcp.log | egrep $count | grep iperf3 | awk '{print $7}')
