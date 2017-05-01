@@ -1,13 +1,15 @@
 #!/bin/bash
-# Version 0.1
+# Version 0.2
 count=$(( ( RANDOM % 9999 )  + 100 ))
 icmp_size=$3
 icmp_target=$4
 deadline=$1
 interval=$2
 
+# Make sure we're not overloaded with scripts
+while [ `pgrep -f 'chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe' | wc -l` -ge 80 ];do echo "[chprobe_error] We've got many scripts running. Some other script is hanging us or the host(s) is not very responsive. Sending SIGTERM to all scripts and trying to SIGINT daemons" | logger -p error && kill $(pgrep -f "chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe" | awk '{print $1}') && kill -2 $(pgrep -f "ping" | awk '{print $1}'); done
+
 # We wait until bbk/iperf3 daemons are done so we don't collide
-# while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 1 ];do sleep 0.5 && echo chprobe_icmp[$(echo $count)] Other daemons are running, waiting a bit. | logger -p notice;done # Verbose
 while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 1 ];do sleep 0.5;done
 
 ping -4 -q -w $deadline -i $interval -s $icmp_size $icmp_target | xargs | sed 's/\<loss\>//g' | awk '{print $2,$26,$18,$20}' | tr -d ',' | sed 's!/! !' | sed 's!/! !' | sed 's!/! !' | tr -d '%' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_icmp[$(echo $count)]: $icmp_size $interval /" >>/var/log/chprobe_icmp.log
