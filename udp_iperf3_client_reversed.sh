@@ -27,14 +27,14 @@ arr[2]="20m"
 rand=$[ $RANDOM % 3 ]
 
 # Iperf daemon settings and conditions
-while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 12 ];do kill $(pgrep -f "iperf3|bbk_cli|wrk" | awk '{print $1}') && echo "[chprobe_error] We're overloaded with daemons, killing everything" | logger -p error ; done
+while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 20 ];do kill $(pgrep -f "iperf3|bbk_cli|wrk" | awk '{print $1}') && echo "[chprobe_error] We're overloaded with daemons, killing everything" | logger -p error ; done
         while [ `pgrep -f 'bbk_cli|wrk' | wc -w` -ge 1 ];do sleep 0.5;done
 case "$(pgrep -f "iperf3 --client" | wc -w)" in
 
 0)  echo "[chprobe_iperf3] Let's see if we can start the udp daemon" | logger -p info
-    while iperf3 -c $target -t 1 | grep busy; do sleep $[ ( $RANDOM % 10 ) + 3]s && echo '[chprobe_iperf3] waiting cuz server is busy' | logger -p info;done
+    while iperf3 -c $target -4 -t 1 | grep busy; do sleep $[ ( $RANDOM % 10 ) + 3]s && echo '[chprobe_iperf3] waiting cuz server is busy' | logger -p info;done
     echo "[chprobe_iperf3] udp daemon started - $direction" | logger -p info
-    /usr/bin/iperf3 --client $target -u -T $direction -R -b ${arr[$rand]} -t 60 | egrep 'iperf Done' -B 3 | egrep 0.00-60.00 | awk '{print $1,$6,$8,$10,$13,$14.$15,$16,$17,$18}' | tr -d '(%)|:' | logger -t iperf3udp[$(echo $count)] -p $logfacility &
+    /usr/bin/iperf3 --client $target -4 -u -T $direction -R -b ${arr[$rand]} -t 60 | egrep 'iperf Done' -B 3 | egrep 0.00-60.00 | awk '{print $1,$6,$8,$10,$13,$14.$15,$16,$17,$18}' | tr -d '(%)|:' | logger -t iperf3udp[$(echo $count)] -p $logfacility &
     if [ $iwdetect -gt 0 ]; then
             if [ $wififreq -lt 2500 ]; then phy=ht & eval $htparse;else
                     if [ $phydetect -ge 1 ]; then phy=vht & eval $vhtparse;else phy=ht eval $htparse;fi;fi
@@ -43,7 +43,7 @@ case "$(pgrep -f "iperf3 --client" | wc -w)" in
 1)  echo "[chprobe_iperf3] iperf daemon already running" | logger -p info
           while [ `pgrep -f 'iperf3 --client|bbk_cli|wrk' | wc -w` -ge 1 ];do sleep $[ ( $RANDOM % 5 ) + 3]s && echo '[chprobe_iperf3] waiting cuz either an iperf3 or a bbk daemon is running' | logger -p info;done    
 echo "[chprobe_iperf3] udp daemon started - $direction" | logger -p info   
-        /usr/bin/iperf3 --client $target -u -T $direction -R -b ${arr[$rand]} -t 60 | egrep 'iperf Done' -B 3 | egrep 0.00-60.00 | awk '{print $1,$6,$8,$10,$13,$14.$15,$16,$17,$18}' | tr -d '(%)|:' | logger -t iperf3udp[$(echo $count)] -p $logfacility &
+        /usr/bin/iperf3 --client $target -4 -u -T $direction -R -b ${arr[$rand]} -t 60 | egrep 'iperf Done' -B 3 | egrep 0.00-60.00 | awk '{print $1,$6,$8,$10,$13,$14.$15,$16,$17,$18}' | tr -d '(%)|:' | logger -t iperf3udp[$(echo $count)] -p $logfacility &
     if [ $iwdetect -gt 0 ]; then
             if [ $wififreq -lt 2500 ]; then phy=ht & eval $htparse;else
                     if [ $phydetect -ge 1 ]; then phy=vht & eval $vhtparse;else phy=ht eval $htparse;fi;fi

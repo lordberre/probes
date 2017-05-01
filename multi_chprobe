@@ -4,7 +4,7 @@ count=$(( ( RANDOM % 9999 )  + 100 ))
 
 # Wait until other daemons are done so we don't collide
 # while [ `pgrep -f 'bbk_cli|iperf3' | wc -w` -ge 1 ];do sleep 0.5 && echo chprobe_multi[$(echo $count)] Other daemons are running, waiting a bit. | logger -p notice;done # Verbose
-while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 12 ];do kill $(pgrep -f "iperf3|bbk_cli|wrk" | awk '{print $1}') && echo "[chprobe_error] We're overloaded with daemons, killing everything" | logger -p error ; done
+while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 20 ];do kill $(pgrep -f "iperf3|bbk_cli|wrk" | awk '{print $1}') && echo "[chprobe_error] We're overloaded with daemons, killing everything" | logger -p error ; done
 while [ `pgrep -f 'bbk_cli|iperf3' | wc -w` -ge 1 ];do sleep 0.5; done
 
 while true
@@ -24,14 +24,14 @@ shift
 service=echoping # For tagging the log
 http_target=$1
 http_target2=$(echo $http_target | sed "s/http://g" | tr -d '/')
-/usr/bin/echoping -P 0xa0 -p 6 -t 20 -w 1 -4 -C -h / -A -a -R -n 5 $http_target | egrep 'Average|Maximum|Minimum|Median|Standard' | awk '{print $3}' | xargs | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_$service[$(echo $count)]: $http_target2 /" >>/var/log/chprobe_https.log
+/usr/bin/echoping -P 0xa0 -4 -p 6 -t 20 -w 1 -4 -C -h / -A -a -R -n 5 $http_target | egrep 'Average|Maximum|Minimum|Median|Standard' | awk '{print $3}' | xargs | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_$service[$(echo $count)]: $http_target2 /" >>/var/log/chprobe_https.log
                        ;;
 		-d)
 shift
 dns=$1
 domain=$2
 for z in {1..10};do
- for x in {TXT,MX,A,CNAME};do /usr/bin/dig @$dns $domain $x && sleep 1;done | grep time | xargs | tr -d 'Query|time|msec|;;|:' | tr -s ' ' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_dns[$(echo $count)]: $dns $domain/" >>/var/log/chprobe_dns.log
+ for x in {TXT,MX,A,CNAME};do /usr/bin/dig -4 @$dns $domain $x && sleep 1;done | grep time | xargs | tr -d 'Query|time|msec|;;|:' | tr -s ' ' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_dns[$(echo $count)]: $dns $domain/" >>/var/log/chprobe_dns.log
 done
 ;;
                                 -h)  cat <<USAGE

@@ -21,14 +21,14 @@ vhtparse="iw \$iwnic station dump | egrep 'tx bitrate|signal:' | xargs | tr -d '
 ####
 
 # Iperf daemon and condititions
-while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 12 ];do kill $(pgrep -f "iperf3|bbk_cli|wrk" | awk '{print $1}') && echo "[chprobe_error] We're overloaded with daemons, killing everything" | logger -p error ; done
+while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 20 ];do kill $(pgrep -f "iperf3|bbk_cli|wrk" | awk '{print $1}') && echo "[chprobe_error] We're overloaded with daemons, killing everything" | logger -p error ; done
         while [ `pgrep -f 'bbk_cli|wrk' | wc -w` -ge 1 ];do sleep 0.5;done
 case "$(pgrep -f "iperf3 --client" | wc -w)" in
 
 0)  echo "[chprobe_iperf3] Let's see if we can start the tcp daemon" | logger -p info
-    while iperf3 -c $target -t 1 | grep busy; do sleep $[ ( $RANDOM % 5 ) + 3]s  && echo '[chprobe_iperf3] waiting cuz server is busy' | logger -p info;done
+    while iperf3 -c $target -4 -t 1 | grep busy; do sleep $[ ( $RANDOM % 5 ) + 3]s  && echo '[chprobe_iperf3] waiting cuz server is busy' | logger -p info;done
     echo "[chprobe_iperf3] Starting the tcp daemon - $direction" | logger -p info
-    /bin/iperf3 --client $target -T $direction -P 15 -w 1m 2>&1 | egrep 'SUM.*rece' | awk '/Mbits\/sec/ {print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility & echo "[chprobe_iperf3] tcp daemon started" | logger -p info &
+    /bin/iperf3 --client $target -4 -T $direction -P 15 -t 12 -O 2 2>&1 | egrep 'SUM.*rece' | awk '/Mbits\/sec/ {print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility & echo "[chprobe_iperf3] tcp daemon started" | logger -p info &
         if [ $iwdetect -gt 0 ]; then
 	    if [ $wififreq -lt 2500 ]; then phy=ht && eval $htparse;else
                     if [ $phydetect -ge 1 ]; then phy=vht && eval $vhtparse;else phy=ht eval $htparse;fi;fi
@@ -39,7 +39,7 @@ case "$(pgrep -f "iperf3 --client" | wc -w)" in
 1)  echo "[chprobe_iperf3] iperf tcp daemon is already running" | logger -p info
           while [ `pgrep -f 'iperf3 --client|bbk_cli|wrk' | wc -w` -ge 1 ];do sleep $[ ( $RANDOM % 5 ) + 3]s && echo '[chprobe_iperf3] waiting cuz either an iperf3 or a bbk daemon is running' | logger -p info;done
 echo "[chprobe_iperf3] Starting the tcp daemon - $direction" | logger -p info
-    /bin/iperf3 --client $target -T $direction -P 15 -w 1m 2>&1 | egrep 'SUM.*rece' | awk '/Mbits\/sec/ {print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility & echo "[chprobe_iperf3] Okey the daemon seems to be finished - starting our tcp daemon" | logger -p info &
+    /bin/iperf3 --client $target -4 -T $direction -P 15 -t 12 -O 2 2>&1 | egrep 'SUM.*rece' | awk '/Mbits\/sec/ {print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility & echo "[chprobe_iperf3] Okey the daemon seems to be finished - starting our tcp daemon" | logger -p info &
         if [ $iwdetect -gt 0 ]; then
 	    if [ $wififreq -lt 2500 ]; then phy=ht && eval $htparse;else
                     if [ $phydetect -ge 1 ]; then phy=vht && eval $vhtparse;else phy=ht eval $htparse;fi;fi
