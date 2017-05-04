@@ -43,3 +43,7 @@
 1. Force IPv4 on all tests for now. Until IPv6 is fully supported.
 2. Introduced dynamic window size (and omit 2 seconds of TCP test) instead of starting with 1MB size like before. Due to issues with newer iperf3 versions (3.1.6+).
 3. Increased anti-collision window (amount of PIDs allowed to run) due long-lived to UDP tests being killed.
+
+# v0.96.10
+1. Merged udp scripts and optimized collision detection
+2. udp scripts are now default enabled
