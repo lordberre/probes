@@ -2,7 +2,7 @@
 # Version 1.1
 count=$(( ( RANDOM % 9999 )  + 100 ))
 #while pgrep -f "iperf3 --client" | wc -w | grep 1; do sleep $[ ( $RANDOM % 5 ) + 3]s && echo '[chprobe_bbk] waiting cuz an iperf3 daemon is running' | logger -p info;done
-while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 1 ];do sleep 0.5;done
+while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 1 ];do sleep 1;done
 
 while true
 do
