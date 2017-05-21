@@ -47,3 +47,7 @@
 # v0.96.10
 1. Merged udp scripts and optimized collision detection
 2. udp scripts are now default enabled
+
+# v0.96.11
+1. IPv6 support for ICMP,BBK,HTTPS and DNS tests. 
+2. Mechanism that enables dualstack mode automatically when IPv6 connectivty is detected.

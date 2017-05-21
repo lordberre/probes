@@ -1,7 +1,40 @@
 #!/bin/bash
-# Version 1.0
+# Version 1.1
 count=$(( ( RANDOM % 9999 )  + 100 ))
 #while pgrep -f "iperf3 --client" | wc -w | grep 1; do sleep $[ ( $RANDOM % 5 ) + 3]s && echo '[chprobe_bbk] waiting cuz an iperf3 daemon is running' | logger -p info;done
 while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 1 ];do sleep 0.5;done
 
+while true
+do
+        case "$1" in
+                -v4)
+
 bbk_cli --live --quiet | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_bbk[$(echo $count)]: /" >>/var/log/chprobe_bbk.log
+
+
+;;
+
+		-v6)
+bbk_cli --live --quiet --v6 | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_bbk_ipv6[$(echo $count)]: /" >>/var/log/chprobe_bbk.log
+
+;;
+                                -h)  cat <<USAGE
+usage: $0 -v4 or -v6 must be specified
+
+    -v4) Force IPv4 
+    -v6) Force IPv6
+USAGE
+            exit 1
+            ;;
+			*)
+	    exit 1 
+	    ;;
+    esac
+
+    shift       
+done
+
+for p in "$@"
+do
+    echo "Non-option argument: '$p'"
+done

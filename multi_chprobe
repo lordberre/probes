@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 0.4
+# Version 0.5 (IPv6 support)
 count=$(( ( RANDOM % 9999 )  + 100 ))
 
 # Make sure we're not overloaded with scripts
@@ -23,17 +23,20 @@ wrk -t $threads -c $connections -d $duration $http_target | sed 's/ms/ /g' | egr
                            ;;
                 -e)
 shift
-service=echoping # For tagging the log
+ip_version=$2
+if [ $ip_version = "4" ]; then service=echoping;elif [ $ip_version = "6" ]; then service=echoping_v6;fi # For tagging the log
 http_target=$1
 http_target2=$(echo $http_target | sed "s/http://g" | tr -d '/')
-/usr/bin/echoping -P 0xa0 -4 -p 6 -t 20 -w 1 -4 -C -h / -A -a -R -n 5 $http_target | egrep 'Average|Maximum|Minimum|Median|Standard' | awk '{print $3}' | xargs | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_$service[$(echo $count)]: $http_target2 /" >>/var/log/chprobe_https.log
+/usr/bin/echoping -P 0xa0 -$ip_version -p 6 -t 20 -w 1 -C -h / -A -a -R -n 5 $http_target | egrep 'Average|Maximum|Minimum|Median|Standard' | awk '{print $3}' | xargs | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_$service[$(echo $count)]: $http_target2 /" >>/var/log/chprobe_https.log
                        ;;
 		-d)
 shift
+ip_version=$3
+if [ $ip_version = "4" ]; then dnstag=dns;elif [ $ip_version = "6" ]; then dnstag=dns_v6;fi # For tagging the log
 dns=$1
 domain=$2
 for z in {1..10};do
- for x in {TXT,MX,A,CNAME};do /usr/bin/dig -4 @$dns $domain $x && sleep 1;done | grep time | xargs | tr -d 'Query|time|msec|;;|:' | tr -s ' ' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_dns[$(echo $count)]: $dns $domain/" >>/var/log/chprobe_dns.log
+ for x in {TXT,MX,A,CNAME,AAAA};do /usr/bin/dig -$ip_version @$dns $domain $x && sleep 1;done | grep time | xargs | tr -d 'Query|time|msec|;;|:' | tr -s ' ' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_$dnstag[$(echo $count)]: $dns $domain/" >>/var/log/chprobe_dns.log
 done
 ;;
                                 -h)  cat <<USAGE
@@ -53,9 +56,4 @@ USAGE
     esac
 
     shift
-done
-
-for p in "$@"
-do
-    echo "Non-option argument: '$p'"
 done
