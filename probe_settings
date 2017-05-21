@@ -3,9 +3,17 @@ probedir=/home/chprobe
 
 # Check IPv6 connectivity
 echo "Checking IPv6 connectivity, stay tuned..." &&
-noconnectivity="$(ping6 -q -c 10 2a00:1450:400f:802::2003 | egrep '100%' | wc -l)"
-if [ $noconnectivity -ge 1 ]; then echo "We don't have IPv6 connectivity" && ipmode=ipv4
-       else echo "We have IPv6 connectivity" && ipmode=dualstack;fi &&
+
+# In case ping6 returns errors we assume IPv6 isn't working
+ping6 -q -c 1 2a00:1450:400f:802::2003
+if [ $? -ge 2 ]; then echo "We don't have IPv6 connectivity (error returned: $?)" && ipmode=ipv4
+	else
+
+	# No errors returned at least, let's see if we actually have connectivity
+	noconnectivity="$(ping6 -q -c 10 2a00:1450:400f:802::2003 | egrep '100%' | wc -l)"
+	if [ $noconnectivity -ge 1 ]; then echo "We don't have IPv6 connectivity" && ipmode=ipv4
+       else echo "We have IPv6 connectivity" && ipmode=dualstack
+       fi;fi
 
 # crontab IPv4
 echo "SHELL=/bin/bash
