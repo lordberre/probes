@@ -51,3 +51,7 @@
 # v0.96.11
 1. IPv6 support for ICMP,BBK,HTTPS and DNS tests. 
 2. Mechanism that enables dualstack mode automatically when IPv6 connectivty is detected.
+
+# v0.96.12
+1. Error syslogging for the scripts
+2. Random fixes
