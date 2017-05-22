@@ -64,7 +64,7 @@ randport=$[ $RANDOM % 3 ]
 
 # Run tests and avoid collisions
 while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 20 ];do kill $(pgrep -f "iperf3|bbk_cli|wrk" | awk '{print $1}') && echo "[chprobe_error] We're overloaded with daemons, killing everything" | logger -p error ; done
-        while [ `pgrep -f 'bbk_cli|wrk|tcp_iperf3' | wc -w` -ge 1 ];do echo '[chprobe_iperf3] Some test is running, waiting.' | logger -p info && sleep 2;done
+        while [ `pgrep -f 'bbk_cli|tcp_iperf3' | wc -w` -ge 1 ];do echo '[chprobe_iperf3] Some test is running, waiting.' | logger -p info && sleep 2;done
 case "$(pgrep -f "iperf3 --client" | wc -w)" in
 
 0)  echo "[chprobe_iperf3] Let's see if we can start the udp daemon" | logger -p info
@@ -77,7 +77,7 @@ case "$(pgrep -f "iperf3 --client" | wc -w)" in
             else echo 'No WiFi NIC detected'>/dev/stdout;fi    
 ;;
 1)  echo "[chprobe_iperf3] iperf daemon already running" | logger -p info
-          while [ `pgrep -f 'iperf3 --client|bbk_cli|wrk' | wc -w` -ge 1 ];do sleep $[ ( $RANDOM % 5 ) + 3]s && echo '[chprobe_iperf3] waiting cuz either an iperf3 or a bbk daemon is running' | logger -p info;done    
+          while [ `pgrep -f 'iperf3 --client|bbk_cli' | wc -w` -ge 1 ];do sleep $[ ( $RANDOM % 5 ) + 3]s && echo '[chprobe_iperf3] waiting cuz either an iperf3 or a bbk daemon is running' | logger -p info;done    
 echo "[chprobe_iperf3] udp daemon started - $direction" | logger -p info   
 	        eval $udpdaemon &
     if [ $iwdetect -gt 0 ]; then
