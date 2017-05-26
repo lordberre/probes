@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 0.97
+# Version 0.98
 direction=downstream
 logfacility=local3.debug
 target="$(curl -s project-mayhem.se/probes/ip.txt)"
@@ -34,8 +34,6 @@ case "$(pgrep -f "iperf3 --client" | wc -w)" in
 	    if [ $wififreq -lt 2500 ]; then phy=ht && eval $htparse;else
                     if [ $phydetect -ge 1 ]; then phy=vht && eval $vhtparse;else phy=ht eval $htparse;fi;fi	    
 	    else echo 'No WiFi NIC detected'>/dev/stdout;fi        
-sleep 15
-    rrdtool update /home/chprobe/tcpdb_$(hostname -d).rrd --template $direction N:$(tail /var/log/iperf3tcp.log | egrep $count | grep iperf3 | awk '{print $7}')
 	;;
 1)  echo "[chprobe_iperf3] iperf tcp daemon is already running" | logger -p info
           while [ `pgrep -f 'iperf3 --client|bbk_cli|wrk' | wc -w` -ge 1 ]; do sleep $[ ( $RANDOM % 5 ) + 3]s && echo '[chprobe_iperf3] waiting cuz either an iperf3 or a bbk daemon is running' | logger -p info;done
@@ -45,8 +43,6 @@ sleep 15
             if [ $wififreq -lt 2500 ]; then phy=ht && eval $htparse;else
                     if [ $phydetect -ge 1 ]; then phy=vht && eval $vhtparse;else phy=ht eval $htparse;fi;fi
             else echo 'No WiFi NIC detected'>/dev/stdout;fi 
-	sleep 15
-    rrdtool update /home/chprobe/tcpdb_$(hostname -d).rrd --template $direction N:$(tail /var/log/iperf3tcp.log | egrep $count | grep iperf3 | awk '{print $7}')
    ;;
 *)  echo "[chprobe_iperf3] multiple instances of iperf3 daemon running. Stopping & restarting iperf:" | logger -p info
     kill $(pgrep -f "iperf3 --client" | awk '{print $1}')
