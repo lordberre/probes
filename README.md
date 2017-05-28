@@ -6,9 +6,9 @@ A series of scripts that will run network performance tests at the assigned inte
 
 The scripts doesn't run the tests, it's done by for example iperf3 (http://software.es.net/iperf/) and common unix binarys such as ping and dig.
 
-- How to install?
+- How to install/use?
  
-If it's interesting, I can make a tutorial for a typical installation here.
+The code is not really optimized for "general use", although it will be, hopefully.
 
 # Monitor/passive mode
 Current features:
@@ -22,7 +22,7 @@ Current features:
 - PHY-Agnostic monitoring of per-client WiFi metrics
 - Benchmark mode:
 
-# Example of my setup
+# Example
  
 ![alt](http://project-mayhem.se/files/dashboard1.png)
  
