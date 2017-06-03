@@ -2,11 +2,19 @@
 
 # Check connectivity and try to recover if not
 noconnectivity="$(ping -c 10 8.8.8.8 | grep 100% | wc -l)"
-noloop="$(tail -n 500 /var/log/messages | grep 'Started Network Manager' | wc -l)"
-if [ $noconnectivity -ge 1 ]; then
-       if [ $noloop -ge 1 ];then echo "[chprobe] We've already restarted Network Manager recently, no point in doing it again." | logger -p warn
-       else systemctl restart NetworkManager && echo "'[chprobe] Seems we don't have internet connectivity, restarting NetworkManager in case it's just us" | logger -p warn;fi
-       else echo "We have connectivity";fi
+noloop="$(tail -n 500 /var/log/messages | grep 'Stopping Network Manager' | wc -l)"
+if [ $noconnectivity -ge 1 ]; then echo "[chprobe_error] Got no errors, but not a single packet went through" | logger -p local5.err
+       if [ $noloop -ge 1 ];then echo "[chprobe_error] We've already restarted Network Manager recently, no point in doing it again." | logger -p local5.err
+       else systemctl restart NetworkManager && echo "[chprobe_error] Seems we don't have internet connectivity, restarting NetworkManager in case it's just us" | logger -p local5.err;fi
+       else 
+
+# In case ping returns errors
+ping -q -c 1 8.8.8.8
+if [ $? -ge 2 ]; then echo "[chprobe_error] We don't have connectivity (error returned: $?)" | logger -p local5.err
+	if [ $noloop -ge 1 ];then echo "[chprobe_error] We've already restarted Network Manager recently, no point in doing it again." | logger -p local5.err
+        else systemctl restart NetworkManager && echo "[chprobe_error] Seems we don't have internet connectivity, restarting NetworkManager in case it's just us" | logger -p local5.err;fi
+else
+	echo "[chprobe] We have connectivity" | logger -p notice;fi;fi
 
 # Say hello to backend server
 probedir=/home/chprobe
