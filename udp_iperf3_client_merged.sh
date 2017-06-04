@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 1.0
+# Version 1.1
 
 while true
 do
@@ -22,6 +22,7 @@ USAGE
     esac;done
 
 logfacility=local4.debug
+logtag=chprobe_iperf3udp
 target="$(curl -s project-mayhem.se/probes/ip-udp.txt)"
 count=$(( ( RANDOM % 9999 )  + 1 ))
 
@@ -63,29 +64,29 @@ randport=$[ $RANDOM % 3 ]
 
 
 # Run tests and avoid collisions
-while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 20 ];do kill $(pgrep -f "iperf3|bbk_cli|wrk" | awk '{print $1}') && echo "[chprobe_error] We're overloaded with daemons, killing everything" | logger -p local5.err ; done
-        while [ `pgrep -f 'bbk_cli|tcp_iperf3' | wc -w` -ge 1 ];do echo '[chprobe_iperf3] Some test is running, waiting.' | logger -p info && sleep 2;done
+while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 30 ];do kill $(pgrep -f "iperf3|bbk_cli|wrk" | awk '{print $1}') && echo "[chprobe_error] We're overloaded with daemons, killing everything" | logger -p local5.err ; done
+        while [ `pgrep -f 'bbk_cli|tcp_iperf3' | wc -w` -ge 1 ];do echo "[$logtag] Some test is running, waiting." | logger -p info && sleep 2;done
 case "$(pgrep -f "iperf3 --client" | wc -w)" in
 
-0)  echo "[chprobe_iperf3] Let's see if we can start the udp daemon" | logger -p info
-    while iperf3 -c $target -p ${portz[$randport]} -t 1 | grep busy; do randport=$[ $RANDOM % 3 ] && sleep $[ ( $RANDOM % 10 ) + 3]s && echo '[chprobe_iperf3] server is busy. We slept a bit, now rolling the dice for the port' | logger -p info;done
-    echo "[chprobe_iperf3] udp daemon started - $direction" | logger -p info
+0)  echo "[$logtag] Let's see if we can start the udp daemon" | logger -p info
+    while iperf3 -c $target -p ${portz[$randport]} -t 1 | grep busy; do randport=$[ $RANDOM % 3 ] && sleep $[ ( $RANDOM % 10 ) + 3]s && echo "[$logtag] server is busy. We slept a bit, now rolling the dice for the port" | logger -p info;done
+    echo "[$logtag] udp daemon started - $direction" | logger -p info
 	eval $udpdaemon &
 	if [ $iwdetect -gt 0 ]; then
             if [ $wififreq -lt 2500 ]; then phy=ht & eval $htparse;else
                     if [ $phydetect -ge 1 ]; then phy=vht & eval $vhtparse;else phy=ht eval $htparse;fi;fi
             else echo 'No WiFi NIC detected'>/dev/stdout;fi    
 ;;
-1)  echo "[chprobe_iperf3] iperf daemon already running" | logger -p info
-          while [ `pgrep -f 'iperf3 --client|bbk_cli' | wc -w` -ge 1 ];do sleep $[ ( $RANDOM % 5 ) + 3]s && echo '[chprobe_iperf3] waiting cuz either an iperf3 or a bbk daemon is running' | logger -p info;done    
-echo "[chprobe_iperf3] udp daemon started - $direction" | logger -p info   
+1)  echo "[$logtag] iperf daemon already running" | logger -p info
+          while [ `pgrep -f 'iperf3 --client|bbk_cli' | wc -w` -ge 1 ];do sleep $[ ( $RANDOM % 5 ) + 3]s && echo "[$logtag] waiting cuz either an iperf3 or a bbk daemon is running" | logger -p info;done    
+echo "[$logtag] udp daemon started - $direction" | logger -p info
 	        eval $udpdaemon &
     if [ $iwdetect -gt 0 ]; then
             if [ $wififreq -lt 2500 ]; then phy=ht & eval $htparse;else
                     if [ $phydetect -ge 1 ]; then phy=vht & eval $vhtparse;else phy=ht eval $htparse;fi;fi
             else echo 'No WiFi NIC detected'>/dev/stdout;fi	
 ;;
-*)  echo "[chprobe_iperf3] multiple instances of iperf3 udp daemons currently running." | logger -p info
+*)  echo "[$logtag] multiple instances of iperf3 udp daemons currently running." | logger -p info
 #    kill $(pgrep -f "iperf3 --client" | awk '{print $1}') # Disabled to allow bidirectional UDP tests
     ;;
 esac;

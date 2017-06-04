@@ -1,7 +1,8 @@
 #!/bin/bash
-# Version 0.98
+# Version 0.98.1
 direction=downstream
 logfacility=local3.debug
+logtag=chprobe_iperf3tcp_ds
 target="$(curl -s project-mayhem.se/probes/ip.txt)"
 count=$(( ( RANDOM % 9999 )  + 100 ))
 # rrd_db="rrdtool update /home/chprobe/tcpdb_\$\(hostname -d\).rrd --template \$direction N:\$\(tail /var/log/iperf3tcp.log | egrep \$count | awk '\{print \$7\}'\)"
@@ -22,29 +23,29 @@ vhtparse="iw \$iwnic station dump | egrep 'tx bitrate|signal:' | xargs | tr -d '
 ####
 
 # Iperf daemon settings and conditions
-while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 20 ];do kill $(pgrep -f "iperf3|bbk_cli|wrk" | awk '{print $1}') && echo "[chprobe_error] We're overloaded with daemons, killing everything" | logger -p local5.err ; done
+while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 30 ];do kill $(pgrep -f "iperf3|bbk_cli|wrk" | awk '{print $1}') && echo "[chprobe_error] We're overloaded with daemons, killing everything" | logger -p local5.err ; done
 	while [ `pgrep -f 'bbk_cli|wrk' | wc -w` -ge 1 ];do sleep 0.5;done
 case "$(pgrep -f "iperf3 --client" | wc -w)" in
 
-0)  echo "[chprobe_iperf3] Let's see if we can start the tcp daemon" | logger -p info
-    while iperf3 -c $target -4 -t 1 | grep busy; do sleep $[ ( $RANDOM % 5 ) + 3]s  && echo '[chprobe_iperf3] waiting cuz server is busy' | logger -p info;done
-    echo "[chprobe_iperf3] Starting the tcp daemon - $direction" | logger -p info
-    /bin/iperf3 --client $target -4 -T $direction -P 15 -R -t 12 -O 2 2>&1 | egrep 'SUM.*rece' | awk '/Mbits\/sec/ {print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility & echo "[chprobe_iperf3] tcp daemon started" | logger -p info & 
+0)  echo "[$logtag] Let's see if we can start the tcp daemon" | logger -p info
+    while iperf3 -c $target -4 -t 1 | grep busy; do sleep $[ ( $RANDOM % 5 ) + 3]s  && echo "[$logtag] waiting cuz server is busy" | logger -p info;done
+    echo "[$logtag] Starting the tcp daemon - $direction" | logger -p info
+    /bin/iperf3 --client $target -4 -T $direction -P 15 -R -t 12 -O 2 2>&1 | egrep 'SUM.*rece' | awk '/Mbits\/sec/ {print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility & echo "[$logtag] tcp daemon started" | logger -p info & 
     if [ $iwdetect -gt 0 ]; then
 	    if [ $wififreq -lt 2500 ]; then phy=ht && eval $htparse;else
                     if [ $phydetect -ge 1 ]; then phy=vht && eval $vhtparse;else phy=ht eval $htparse;fi;fi	    
 	    else echo 'No WiFi NIC detected'>/dev/stdout;fi        
 	;;
-1)  echo "[chprobe_iperf3] iperf tcp daemon is already running" | logger -p info
-          while [ `pgrep -f 'iperf3 --client|bbk_cli|wrk' | wc -w` -ge 1 ]; do sleep $[ ( $RANDOM % 5 ) + 3]s && echo '[chprobe_iperf3] waiting cuz either an iperf3 or a bbk daemon is running' | logger -p info;done
-    echo "[chprobe_iperf3] Starting the tcp daemon - $direction"
-    /bin/iperf3 --client $target -4 -T $direction -P 15 -R -t 12 -O 2 2>&1 | egrep 'SUM.*rece' | awk '/Mbits\/sec/ {print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility & echo "[chprobe_iperf3] Okey the daemon seems to be finished - starting our tcp daemon" | logger -p info &
+1)  echo "[$logtag] iperf tcp daemon is already running" | logger -p info
+          while [ `pgrep -f 'iperf3 --client|bbk_cli|wrk' | wc -w` -ge 1 ]; do sleep $[ ( $RANDOM % 5 ) + 3]s && echo "[$logtag] waiting cuz either an iperf3 or a bbk daemon is running" | logger -p info;done
+    echo "[$logtag] Starting the tcp daemon - $direction"
+    /bin/iperf3 --client $target -4 -T $direction -P 15 -R -t 12 -O 2 2>&1 | egrep 'SUM.*rece' | awk '/Mbits\/sec/ {print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility & echo "[$logtag] Okey the daemon seems to be finished - starting our tcp daemon" | logger -p info &
        if [ $iwdetect -gt 0 ]; then
             if [ $wififreq -lt 2500 ]; then phy=ht && eval $htparse;else
                     if [ $phydetect -ge 1 ]; then phy=vht && eval $vhtparse;else phy=ht eval $htparse;fi;fi
             else echo 'No WiFi NIC detected'>/dev/stdout;fi 
    ;;
-*)  echo "[chprobe_iperf3] multiple instances of iperf3 daemon running. Stopping & restarting iperf:" | logger -p info
+*)  echo "[$logtag] multiple instances of iperf3 daemon running. Stopping & restarting iperf:" | logger -p info
     kill $(pgrep -f "iperf3 --client" | awk '{print $1}')
     ;;
 esac;
