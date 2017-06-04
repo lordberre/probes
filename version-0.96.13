@@ -55,3 +55,7 @@
 # v0.96.12
 1. Error syslogging for the scripts
 2. Random fixes
+
+# v.0.96.13
+1. Fixed logtags so it's easier to debug
+2. Increased some scripts overhead to allow more paralell running scripts, due to IPv6 errors.
