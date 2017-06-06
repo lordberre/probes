@@ -3,7 +3,7 @@
 count=$(( ( RANDOM % 9999 )  + 100 ))
 
 # Make sure we're not overloaded with scripts
-while [ `pgrep -f 'chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe' | wc -l` -ge 80 ];do echo "[chprobe_error] We've got many scripts running. Some other script is hanging us or the host(s) is not very responsive. Sending SIGTERM to all scripts and trying to SIGINT daemons" | logger -p local5.err && kill $(pgrep -f "chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe" | awk '{print $1}') && kill -2 $(pgrep -f "ping" | awk '{print $1}'); done
+while [ `pgrep -f 'chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe' | wc -l` -ge 100 ];do echo "[chprobe_error] We've got many scripts running. Some other script is hanging us or the host(s) is not very responsive. Sending SIGTERM to all scripts and trying to SIGINT daemons" | logger -p local5.err && kill $(pgrep -f "chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe" | awk '{print $1}') && kill -2 $(pgrep -f "ping" | awk '{print $1}'); done
 
 # Wait until other daemons are done so we don't collide
 while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 30 ];do kill $(pgrep -f "iperf3|bbk_cli|wrk" | awk '{print $1}') && echo "[chprobe_error] We're overloaded with daemons, killing everything" | logger -p local5.err ; done
