@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 1.4 (BBK backoff) 
+# Version 2.0 (BBK backoff) 
 count=$(( ( RANDOM % 9999 )  + 100 ))
 zone=x
 ip_version=x
