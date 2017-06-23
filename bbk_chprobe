@@ -1,9 +1,14 @@
 #!/bin/bash
-# Version 2.0 (BBK backoff) 
-count=$(( ( RANDOM % 9999 )  + 100 ))
+# Version 2.1 (BBK backoff) 
+
+# Dont touch this
 zone=x
 ip_version=x
-logtag=chprobe_bbk
+
+# Log related stuff
+count=$(( ( RANDOM % 9999 )  + 100 ))
+logtag=chprobe_bbk[$(echo $count)]
+logtag_ipv6=chprobe_bbk_ipv6[$(echo $count)]
 
 # For global zone, if you want something else than hostname, then edit below
 probename="$(hostname -d)"
@@ -12,11 +17,12 @@ probename="$(hostname -d)"
 bbk_apiurl="http://project-mayhem.se/probes/bbk_api.php"
 
 # Functions and variables
-localstatus="$(pgrep -f 'bbk_cli|iperf3' | wc -l)"
+localstatus="$(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)"
 bbk_remotestatusv2="curl -m 3 -s -o /dev/null -w \"%{http_code}\" \$bbk_apiurl"
 globalzone_url="http://project-mayhem.se/probes/bbkzone_$probename"
 
 reinit_status () {
+localstatus="$(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)"
 bbk_remoteurl="http://project-mayhem.se/probes/bbk_status_zone-$zone"
 bbk_remotestatus="$(curl -m 3 -s -XGET $bbk_remoteurl)"
  }
@@ -25,7 +31,6 @@ setzone () {
 curl -XPOST -d "zone=$zone" -d "status=$1" $bbk_apiurl &> /dev/null
  }
 
-# Populate zone variable etc
 usage () { 
 cat <<USAGE
 How to use: $0 -4 or -6 must be specified.
@@ -72,16 +77,27 @@ reinit_status
 fi
 
 # Check if global zone is disabled
-if [ $zone = "x" ];then echo "[$logtag] Seems that your global zone is disabled, hope this is what you want" | logger -p notice && bbk_remotestatus=0
+if [ $zone = "x" ];then echo "[$logtag] Seems that your global zone is disabled, hope this is what you want" | logger -p notice &&
+
+# Change reinit function since we don't care about remote zone anymore
+reinit_status () {
+localstatus="$(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)"
+ }
+bbk_remotestatus=0 
 fi 
 
 # Informational message
 echo "Running tests, look for messages/errors in journal or in your logdir. The test result is saved at /var/log/chprobe_bbk.log"
 
+# In case two or more tests are executed exactly at the same time, create some random delay
+if [ $(pgrep -f 'bbk' | wc -l) -ge 3 ]; then
+sleep $[ ( $RANDOM % 7 ) + 3]s
+fi
+
 # Make sure no other test of relevance is running and that our zone is clear before going further
-if [ $bbk_remotestatus -eq 1 ] || [ $localstatus -ge 5 ]; then
-	while [ $bbk_remotestatus -eq 1 ] || [ $localstatus -ge 5 ]
-      	do sleep 1 && echo "[$logtag] sleeping 1sec, reason: [remote: $bbk_remotestatus (zone=$zone). local: $localstatus"] | logger -p notice; done
+if [ $bbk_remotestatus -eq 1 ] || [ $localstatus -ge 1 ]; then
+	while [ $bbk_remotestatus -eq 1 ] || [ $localstatus -ge 1 ]
+      	do echo "[$logtag] sleeping 3-5 sec, reason: [remote: $bbk_remotestatus (zone=$zone). local: $localstatus"] | logger -p notice && sleep $[ ( $RANDOM % 5 ) + 3]s && reinit_status; done
 		elif [ $bbk_remotestatus -eq 0 ] || [ $localstatus -eq 0 ]
                 	then echo "[$logtag] Zone should be either clear or disabled ($zone/$bbk_remotestatus) and local status is ok as well, let's continue" | logger -p notice
                         	else echo "[$logtag] Unknown error, state returned: $? and bbk_remotestatus is $bbk_remotestatus" | logger -p notice && exit 1
@@ -90,18 +106,18 @@ fi
 # Allocate the zone and start the desired test
         case "$ip_version" in
                 4)
-setzone 1 && sleep 1 &&
-bbk_cli --live --quiet | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) $logtag[$(echo $count)]: /" >>/var/log/chprobe_bbk.log &&
+setzone 1 && sleep 1 && echo "[$logtag] Starting bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3' | wc -l)]" | logger -p notice &&
+bbk_cli --live --quiet | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) $logtag: /" >>/var/log/chprobe_bbk.log &&
 
 # Set zone status to 0 when done
-setzone 0
+setzone 0 && sleep 1 && echo "[$logtag] Finished bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3' | wc -l)]" | logger -p notice
 ;;
 		6)
-setzone 1 && sleep 1 &&
-bbk_cli --live --quiet --v6 | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) $logtag_ipv6[$(echo $count)]: /" >>/var/log/chprobe_bbk.log &&
+setzone 1 && sleep 1 && echo "[$logtag] Starting bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3' | wc -l)]" | logger -p notice &&
+bbk_cli --live --quiet --v6 | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) $logtag_ipv6: /" >>/var/log/chprobe_bbk.log &&
 
 # Set zone status to 0 when done
-setzone 0
+setzone 0 && sleep 1 && echo "[$logtag] Finished bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3' | wc -l)]" | logger -p notice
 ;;
 
 # Return error if ip version isn't specified

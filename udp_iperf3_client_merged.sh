@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 1.1
+# Version 1.2
 
 while true
 do
@@ -64,8 +64,8 @@ randport=$[ $RANDOM % 3 ]
 
 
 # Run tests and avoid collisions
-while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 30 ];do kill $(pgrep -f "iperf3|bbk_cli|wrk" | awk '{print $1}') && echo "[chprobe_error] We're overloaded with daemons, killing everything" | logger -p local5.err ; done
-        while [ `pgrep -f 'bbk_cli|tcp_iperf3' | wc -w` -ge 1 ];do echo "[$logtag] Some test is running, waiting." | logger -p info && sleep 2;done
+while [ `pgrep -f 'bbk|iperf3|wrk' | wc -w` -ge 30 ];do kill $(pgrep -f "iperf3|bbk|wrk" | awk '{print $1}') && echo "[chprobe_error] We're overloaded with daemons, killing everything" | logger -p local5.err ; done
+        while [ `pgrep -f 'bbk|tcp_iperf3' | wc -w` -ge 1 ];do echo "[$logtag] bbk or iperf3tcp is running, waiting." | logger -p info && sleep 3;done
 case "$(pgrep -f "iperf3 --client" | wc -w)" in
 
 0)  echo "[$logtag] Let's see if we can start the udp daemon" | logger -p info
