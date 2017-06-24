@@ -7,7 +7,7 @@ while [ `pgrep -f 'chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe' | wc -
 
 # Wait until other daemons are done so we don't collide
 while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 30 ];do kill $(pgrep -f "iperf3|bbk_cli|wrk" | awk '{print $1}') && echo "[chprobe_error] We're overloaded with daemons, killing everything" | logger -p local5.err ; done
-while [ `pgrep -f 'bbk_cli|tcp_iperf3' | wc -w` -ge 1 ];do sleep 1; done
+while [ `pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -w` -ge 1 ];do sleep 1; done
 
 while true
 do
