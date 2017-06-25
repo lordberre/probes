@@ -37,7 +37,7 @@ echo "*/15 *  *  *  * root /home/chprobe/./tcp_iperf3_client_reversed.sh &> /dev
 echo "*/30 *  *  *  * root /home/chprobe/./upnpc-probe.sh > /dev/null" >> /etc/crontab
 echo "*/30 *  *  *  * root /home/chprobe/./probemanager managerupdate &> /dev/null" >> /etc/crontab
 echo "*/60 *  *  *  * root /home/chprobe/./probemanager update &> /dev/null" >> /etc/crontab
-echo "5 7  *  *  7    root tar cvfz /root/backups/chprobe_backup-\$(date +\"%d%m%y\"-\"%H%M\" | tr -d '-').tgz /home/chprobe > /dev/null" >> /etc/crontab
+echo "5 7  *  *  7    root tar cvfz /root/backups/chprobe_backup-\$(date +\"%d%m%y\"-\"%H%M\" | tr -d '-').tgz /home/chprobe &> /dev/null" >> /etc/crontab
 echo "*/20 *  *  *  * root /home/chprobe/./smokeslave_fakepost > /dev/null" >> /etc/crontab
 echo "*/2  *  *  *  * root /home/chprobe/./icmp_chprobe -v4 100 1 54 ping.sunet.se &> /dev/null" >> /etc/crontab
 echo "*/2  *  *  *  * root /home/chprobe/./icmp_chprobe -v4 100 1 1800 sunet.se &> /dev/null" >> /etc/crontab
