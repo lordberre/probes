@@ -119,19 +119,19 @@ fi
         case "$ip_version" in
                 4)
 remotelocal_loop
-setzone 1 && sleep 1 && echo "[$logtag] Starting bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3' | wc -l)]" | logger -p notice &&
+setzone 1 && sleep 1 && echo "[$logtag] Starting bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice &&
 bbk_cli --live --quiet | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) $logtag: /" >>/var/log/chprobe_bbk.log &&
 
 # Set zone status to 0 when done
-setzone 0 && sleep 1 && echo "[$logtag] Finished bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3' | wc -l)]" | logger -p notice
+setzone 0 && sleep 1 && echo "[$logtag] Finished bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice
 ;;
 		6)
 remotelocal_loop
-setzone 1 && sleep 1 && echo "[$logtag] Starting bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3' | wc -l)]" | logger -p notice &&
+setzone 1 && sleep 1 && echo "[$logtag] Starting bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice &&
 bbk_cli --live --quiet --v6 | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) $logtag_ipv6: /" >>/var/log/chprobe_bbk.log &&
 
 # Set zone status to 0 when done
-setzone 0 && sleep 1 && echo "[$logtag] Finished bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3' | wc -l)]" | logger -p notice
+setzone 0 && sleep 1 && echo "[$logtag] Finished bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice
 ;;
 
 # Return error if ip version isn't specified
