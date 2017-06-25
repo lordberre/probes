@@ -37,12 +37,12 @@ echo "*/15 *  *  *  * root /home/chprobe/./tcp_iperf3_client_reversed.sh &> /dev
 echo "*/30 *  *  *  * root /home/chprobe/./upnpc-probe.sh > /dev/null" >> /etc/crontab
 echo "*/30 *  *  *  * root /home/chprobe/./probemanager managerupdate &> /dev/null" >> /etc/crontab
 echo "*/60 *  *  *  * root /home/chprobe/./probemanager update &> /dev/null" >> /etc/crontab
-echo "5 7  *  *  7    root tar cvfz /root/backups/chprobe_backup-\$(date +\"%d%m%y\"-\"%H%M\" | tr -d '-').tgz /home/chprobe > /dev/null" >> /etc/crontab
+echo "5 7  *  *  7    root tar cvfz /root/backups/chprobe_backup-\$(date +\"%d%m%y\"-\"%H%M\" | tr -d '-').tgz /home/chprobe &> /dev/null" >> /etc/crontab
 echo "*/20 *  *  *  * root /home/chprobe/./smokeslave_fakepost > /dev/null" >> /etc/crontab
 echo "*/2  *  *  *  * root /home/chprobe/./icmp_chprobe -v4 100 1 54 ping.sunet.se &> /dev/null" >> /etc/crontab
 echo "*/2  *  *  *  * root /home/chprobe/./icmp_chprobe -v4 100 1 1800 sunet.se &> /dev/null" >> /etc/crontab
 echo "*/2  *  *  *  * root /home/chprobe/./icmp_chprobe -v4 100 0.5 54 ping.sunet.se &> /dev/null" >> /etc/crontab
-echo "*/15 *  *  *  * root /home/chprobe/./bbk_chprobe -v4 &> /dev/null" >> /etc/crontab
+echo "*/15 *  *  *  * root /home/chprobe/./bbk_chprobe -4 -g &> /dev/null" >> /etc/crontab
 echo "*/12 * * * * root /home/chprobe/./multi_chprobe -w 3 200 30 http://google.se &> /dev/null" >> /etc/crontab
 echo "*/2 * * * * root /home/chprobe/./multi_chprobe -d 83.255.255.2 sunet.se 4 &> /dev/null" >> /etc/crontab
 echo "*/2 * * * * root /home/chprobe/./multi_chprobe -e www.facebook.com 4 &> /dev/null" >> /etc/crontab
@@ -52,7 +52,7 @@ if [ $ipmode = "dualstack" ]; then
 echo "*/2  *  *  *  * root /home/chprobe/./icmp_chprobe -v6 100 1 54 ping.sunet.se &> /dev/null" >> /etc/crontab
 echo "*/2  *  *  *  * root /home/chprobe/./icmp_chprobe -v6 100 1 1800 sunet.se &> /dev/null" >> /etc/crontab
 echo "*/2  *  *  *  * root /home/chprobe/./icmp_chprobe -v6 100 0.5 54 ping.sunet.se &> /dev/null" >> /etc/crontab
-echo "*/16 *  *  *  * root /home/chprobe/./bbk_chprobe -v6 &> /dev/null" >> /etc/crontab
+echo "*/16 *  *  *  * root /home/chprobe/./bbk_chprobe -6 -g &> /dev/null" >> /etc/crontab
 echo "*/2 * * * * root /home/chprobe/./multi_chprobe -d 2a04:ae3a:ae3a::1 sunet.se 6 &> /dev/null" >> /etc/crontab
 echo "*/2 * * * * root /home/chprobe/./multi_chprobe -e www.facebook.com 6 &> /dev/null" >> /etc/crontab
 fi
