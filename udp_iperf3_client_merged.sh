@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 1.2
+# Version 1.3
 
 while true
 do
@@ -23,8 +23,17 @@ USAGE
 
 logfacility=local4.debug
 logtag=chprobe_iperf3udp
-target="$(curl -s project-mayhem.se/probes/ip-udp.txt)"
 count=$(( ( RANDOM % 9999 )  + 1 ))
+
+# Remote url stuff
+ip_url="http://project-mayhem.se/probes/ip-udp.txt"
+urlz="curl -m 3 -s -o /dev/null -w \"%{http_code}\" \$ip_url"
+urlcheck=$(eval $urlz)
+
+# Use cached ip if remote server is not responding
+if [ $urlcheck -ne 200 ]; then target="$(cat /var/ip_udp.txt)"
+        else target="$(curl -m 3 -s $ip_url)" && curl -m 3 -s -o /var/ip_udp.txt $ip_url
+fi
 
 # Daemon settings
 if [ $direction = "upstream" ]; then

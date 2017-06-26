@@ -1,10 +1,19 @@
 #!/bin/bash
-# Version 0.98.1
+# Version 0.98.2
 direction=upstream
 logfacility=local3.debug
 logtag=chprobe_iperf3tcp_us
-target="$(curl -s project-mayhem.se/probes/ip.txt)"
 count=$(( ( RANDOM % 9999 )  + 100 ))
+
+# Remote url stuff
+ip_url="http://project-mayhem.se/probes/ip.txt"
+urlz="curl -m 3 -s -o /dev/null -w \"%{http_code}\" \$ip_url"
+urlcheck=$(eval $urlz)
+
+# Use cached ip if remote server is not responding
+if [ $urlcheck -ne 200 ]; then target="$(cat /var/ip_tcp.txt)" 
+        else target="$(curl -m 3 -s $ip_url)" && curl -m 3 -s -o /var/ip_tcp.txt $ip_url
+fi
 
 ### WiFi stuff
 iwnic=$(ifconfig | grep wl | awk '{print $1}' | tr -d ':') # Is there a wireless interface?
