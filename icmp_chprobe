@@ -5,7 +5,7 @@ icmp_size=$4
 icmp_target=$5
 deadline=$2
 interval=$3
-logfacility="[chprobe_icmp[$(echo $count)]"
+logfacility="chprobe_icmp[$(echo $count)]"
 
 # Make sure we're not overloaded with scripts
 while [ `pgrep -f 'chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe' | wc -l` -ge 80 ];do echo "[chprobe_error] We've got many scripts running. Some other script is hanging us or the host(s) is not very responsive. Sending SIGTERM to all scripts and trying to SIGINT daemons" | logger -p local5.err && kill $(pgrep -f "chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe" | awk '{print $1}') && kill -2 $(pgrep -f "ping" | awk '{print $1}'); done
@@ -14,7 +14,7 @@ while [ `pgrep -f 'chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe' | wc -
 backoff=0
 while [ `pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -w` -ge 1 ];do sleep 1 && 
 backoff=$(( $backoff + 1 ))
-if [ $backoff -ge 120 ]; then
+if [ $backoff -ge 160 ]; then
 echo "$logfacility We broke out of the loop because we waited ($backoff). This could be bad" | logger -p local5.err && break
 fi
 done
