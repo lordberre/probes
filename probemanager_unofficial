@@ -8,7 +8,7 @@ managerurl=http://project-mayhem.se/files/probemanager
 
 case "$1" in
   installation)
-  yum install -y  wget rrdtool iperf iperf3
+  yum install -y  wget iperf iperf3 &&
   echo 'Updating Manager'
   pushd $probedir/
   rm -f $probedir/probemanager*;sleep 1 && wget --no-cache $managerurl -P $probedir/ &&

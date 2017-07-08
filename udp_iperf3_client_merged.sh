@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 1.2
+# Version 1.4
 
 while true
 do
@@ -23,8 +23,17 @@ USAGE
 
 logfacility=local4.debug
 logtag=chprobe_iperf3udp
-target="$(curl -s project-mayhem.se/probes/ip-udp.txt)"
 count=$(( ( RANDOM % 9999 )  + 1 ))
+
+# Remote url stuff
+ip_url="http://project-mayhem.se/probes/ip-udp-beta.txt"
+urlz="curl -m 3 -s -o /dev/null -w \"%{http_code}\" \$ip_url"
+urlcheck=$(eval $urlz)
+
+# Use cached ip if remote server is not responding
+if [ $urlcheck -ne 200 ]; then target="$(cat /var/ip_udp-beta.txt)"
+        else target="$(curl -m 3 -s $ip_url)" && curl -m 3 -s -o /var/ip_udp-beta.txt $ip_url
+fi
 
 # Daemon settings
 if [ $direction = "upstream" ]; then
@@ -57,10 +66,15 @@ arr[2]="20m"
 rand=$[ $RANDOM % 3 ]
 
 # Randomize ports to connect to.
-portz[0]="5210"
-portz[1]="5215"
-portz[2]="5220"
-randport=$[ $RANDOM % 3 ]
+portz[0]="5203"
+portz[1]="5204"
+portz[2]="5205"
+portz[3]="5206"
+portz[4]="5207"
+portz[5]="5208"
+portz[6]="5209"
+portz[7]="5210"
+randport=$[ $RANDOM % 8 ]
 
 
 # Run tests and avoid collisions
@@ -69,7 +83,7 @@ while [ `pgrep -f 'bbk|iperf3|wrk' | wc -w` -ge 30 ];do kill $(pgrep -f "iperf3|
 case "$(pgrep -f "iperf3 --client" | wc -w)" in
 
 0)  echo "[$logtag] Let's see if we can start the udp daemon" | logger -p info
-    while iperf3 -c $target -p ${portz[$randport]} -t 1 | grep busy; do randport=$[ $RANDOM % 3 ] && sleep $[ ( $RANDOM % 10 ) + 3]s && echo "[$logtag] server is busy. We slept a bit, now rolling the dice for the port" | logger -p info;done
+    while iperf3 -c $target -p ${portz[$randport]} -t 1 | grep busy; do randport=$[ $RANDOM % 8 ] && sleep $[ ( $RANDOM % 10 ) + 3]s && echo "[$logtag] server is busy. We slept a bit, now rolling the dice for the port" | logger -p info;done
     echo "[$logtag] udp daemon started - $direction" | logger -p info
 	eval $udpdaemon &
 	if [ $iwdetect -gt 0 ]; then

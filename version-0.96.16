@@ -63,3 +63,13 @@
 # v.0.96.14
 1. Introducing BBK script 2.0. Probes can now be configured to avoid collisions when multiple probes are sharing an uplink for example. Also more improvements to this script.
 2. Slightly lowered priority for udp tests so it's less likely they interfere with bbk tests
+
+# v.0.96.15
+1. Fixes for BBK script related to collisions
+2. Fix for iperf3 and bbk scripts, they can now run without remote server access
+3. Fixed probe_settings stupidness
+
+# v.0.96.16
+1. Introduced zones to iperf3tcp scripts. BBK and iperf3tcp will now contend using the same zone to avoid remote collisions of the two.
+2. Added backoff limits for icmp and multi tests to avoid getting stuck because of remote server issues
+3. Iperf3tcp scripts merged together.

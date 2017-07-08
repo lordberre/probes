@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 2.2 (BBK backoff) 
+# Version 2.3 (BBK backoff) 
 
 # Dont touch this
 zone=x
@@ -12,6 +12,9 @@ logtag_ipv6=chprobe_bbk_ipv6[$(echo $count)]
 
 # For global zone, if you want something else than hostname, then edit below
 probename="$(hostname -d)"
+
+# Should the script continue even if remote server is inresponsive? Default is true
+force_start=true
 
 # Link to bbk_api
 bbk_apiurl="http://project-mayhem.se/probes/bbk_api.php"
@@ -28,7 +31,9 @@ bbk_remotestatus="$(curl -m 3 -s -XGET $bbk_remoteurl)"
  }
 
 setzone () { 
-curl -XPOST -d "zone=$zone" -d "status=$1" $bbk_apiurl &> /dev/null
+if [ $zone = "1" ] || [ $zone = "2" ] || [ $zone = "3" ] || [ $zone = "4" ] || [ $zone = "5" ]; then
+curl -m 3 -s -XPOST -d "zone=$zone" -d "status=$1" $bbk_apiurl &> /dev/null && sleep 1
+fi
  }
 
 remotelocal_loop () {
@@ -68,8 +73,8 @@ shift $(($OPTIND - 1))
 
 # Check zone variable and errors
 if [ $zone = "1" ] || [ $zone = "2" ] || [ $zone = "3" ] || [ $zone = "4" ] || [ $zone = "5" ] || [ $zone = "z" ]; 
-then reinit_status && bs=$(eval $bbk_remotestatusv2)
-	if [ $bs -ne 200 ]; then echo "[$logtag] Zone is okay but it seems that we got a bad response, maybe the remote server is down? You should disable the zone for now" | logger -p local5.err && exit 1
+then reinit_status; bs=$(eval $bbk_remotestatusv2)
+	if [ $bs -ne 200 ]; then echo "[$logtag] It seems that we got a bad response, maybe the remote server is down? You should disable the zone for now. Running test anyway" | logger -p local5.err && zone=x
 	fi
 			elif [ $zone = "x" ];then echo "[$logtag] No zone specified, other probes may collide with you" | logger -p notice && bbk_remotestatus=0
 			  else
@@ -77,7 +82,7 @@ then reinit_status && bs=$(eval $bbk_remotestatusv2)
 fi
 
 # If global zone, then set necessary variables before going further
-if [ $zone = "z" ];then echo "[$logtag] Using global zone" | logger -p notice && zone="$(curl -m 3 -s -XGET $globalzone_url)" && 
+if [ $zone = "z" ];then echo "[$logtag] Using global zone" | logger -p notice && zone="$(curl -m 3 -s -XGET $globalzone_url)"; 
 
 # Also reintroduce the urls now
 reinit_status
@@ -91,6 +96,7 @@ reinit_status () {
 localstatus="$(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)"
  }
 bbk_remotestatus=0 
+reinit_status
 fi 
 
 # Informational message
@@ -112,26 +118,30 @@ if [ $bbk_remotestatus -eq 1 ] || [ $localstatus -ge 1 ]; then
 	remotelocal_loop
 		elif [ $bbk_remotestatus -eq 0 ] || [ $localstatus -eq 0 ]
                 	then echo "[$logtag] Zone should be either clear or disabled ($zone/$bbk_remotestatus) and local status is ok as well, let's continue" | logger -p notice
-                        	else echo "[$logtag] Unknown error, state returned: $? and bbk_remotestatus is $bbk_remotestatus" | logger -p notice && exit 1
+                        	else echo "[$logtag] Unknown error, state returned: $? and bbk_remotestatus is $bbk_remotestatus" | logger -p notice
+					if [ $force_start = "true" ]
+					then echo "[$logtag] Starting test anyway (force_start is set to: $force_start)" | logger -p notice
+						else echo "[$logtag] Aborting due to remote server errors. (for debugging: $bbk_remotestatus,$zone,$localstatus,$force_start)" | logger -p local5.err && exit 1
+					fi
 fi
 
 # Allocate the zone and start the desired test
         case "$ip_version" in
                 4)
 remotelocal_loop
-setzone 1 && sleep 1 && echo "[$logtag] Starting bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice &&
+setzone 1 && echo "[$logtag] Starting bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice &&
 bbk_cli --live --quiet | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) $logtag: /" >>/var/log/chprobe_bbk.log &&
 
 # Set zone status to 0 when done
-setzone 0 && sleep 1 && echo "[$logtag] Finished bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice
+setzone 0 && echo "[$logtag] Finished bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice
 ;;
 		6)
 remotelocal_loop
-setzone 1 && sleep 1 && echo "[$logtag] Starting bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice &&
+setzone 1 && echo "[$logtag] Starting bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice &&
 bbk_cli --live --quiet --v6 | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) $logtag_ipv6: /" >>/var/log/chprobe_bbk.log &&
 
 # Set zone status to 0 when done
-setzone 0 && sleep 1 && echo "[$logtag] Finished bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice
+setzone 0 && echo "[$logtag] Finished bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice
 ;;
 
 # Return error if ip version isn't specified
