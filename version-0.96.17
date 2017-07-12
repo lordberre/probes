@@ -1,3 +1,8 @@
+# Known issues
+# Last update: v.0.96.17
+1. Multiple iperf3 tests wating for a busy server will fail sometimes when exiting the loop, due to that the server might become busy during this short interval
+2. The contention loops in BBK/iperf3 are also effected by a busy iperf3 server. There should different cases for when the server is busy and when the iperf3 is actually running the test.
+
 # v0.93
 1. Fix issue with upnpc-script when IPv6 active in client
 2. Smoke-scripts now has proper logging
@@ -68,3 +73,17 @@
 1. Fixes for BBK script related to collisions
 2. Fix for iperf3 and bbk scripts, they can now run without remote server access
 3. Fixed probe_settings stupidness
+
+# v.0.96.16
+1. Introduced zones to iperf3tcp scripts. BBK and iperf3tcp will now contend using the same zone to avoid remote collisions of the two.
+2. Added backoff limits for icmp and multi tests to avoid getting stuck forever because of remote server issues
+3. Iperf3tcp scripts merged together.
+4. Changed some arguments in the iperf3 udp tests to decrease overhead for tcp tests
+5. The UDP scripts now use 7 daemons instead of 3, this should greatly reduce overhead
+6. Added unique timers for probes using global zones
+7. Assigned dedicated iperf3 server daemons to each global zone to reduce overhead
+
+# v.0.96.17
+1. Reverted udp daemons (#5 in previous v.0.96.16) due to server bandwitdh issues
+2. udp tests with 5m and 10m bitrates are no longer effected by anti-collisions mechanisms
+3. Improved remote zone mechanisms (bbk and iperf3tcp scripts)

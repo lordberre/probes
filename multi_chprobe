@@ -1,13 +1,22 @@
 #!/bin/bash
-# Version 0.5 (IPv6 support)
+# Version 0.61 (IPv6 support)
 count=$(( ( RANDOM % 9999 )  + 100 ))
+logfacility="multi_chprobe[$(echo $count)]"
 
 # Make sure we're not overloaded with scripts
-while [ `pgrep -f 'chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe' | wc -l` -ge 100 ];do echo "[chprobe_error] We've got many scripts running. Some other script is hanging us or the host(s) is not very responsive. Sending SIGTERM to all scripts and trying to SIGINT daemons" | logger -p local5.err && kill $(pgrep -f "chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe" | awk '{print $1}') && kill -2 $(pgrep -f "ping" | awk '{print $1}'); done
+while [ `pgrep -f 'chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe' | wc -l` -ge 90 ];do echo "[chprobe_error] We've got many scripts running. Some other script is hanging us or the host(s) is not very responsive. Sending SIGTERM to all scripts and trying to SIGINT daemons" | logger -p local5.err && kill $(pgrep -f "chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe" | awk '{print $1}') && kill -2 $(pgrep -f "ping" | awk '{print $1}'); done
 
 # Wait until other daemons are done so we don't collide
 while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 30 ];do kill $(pgrep -f "iperf3|bbk_cli|wrk" | awk '{print $1}') && echo "[chprobe_error] We're overloaded with daemons, killing everything" | logger -p local5.err ; done
-while [ `pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -w` -ge 1 ];do sleep 1; done
+
+backoff=0
+while [ `pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -w` -ge 1 ];do sleep 1 &&
+backoff=$(( $backoff + 1 ))
+if [ $backoff -ge 180 ]; then
+break && echo "$logfacility We broke out of the loop because we waited $backoff. This could be bad" | logger -p local5.err
+fi
+done
+
 
 while true
 do
@@ -35,7 +44,7 @@ ip_version=$3
 if [ $ip_version = "4" ]; then dnstag=dns;elif [ $ip_version = "6" ]; then dnstag=dns_v6;fi # For tagging the log
 dns=$1
 domain=$2
-for z in {1..10};do
+for z in {1..5};do
  for x in {TXT,MX,A,CNAME,AAAA};do /usr/bin/dig -$ip_version @$dns $domain $x && sleep 1;done | grep time | xargs | tr -d 'Query|time|msec|;;|:' | tr -s ' ' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_$dnstag[$(echo $count)]: $dns $domain/" >>/var/log/chprobe_dns.log
 done
 ;;

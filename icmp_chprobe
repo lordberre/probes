@@ -1,28 +1,51 @@
 #!/bin/bash
-# Version 0.25
+# Version 0.27
 count=$(( ( RANDOM % 9999 )  + 100 ))
 icmp_size=$4
 icmp_target=$5
 deadline=$2
 interval=$3
+logfacility="chprobe_icmp[$(echo $count)]"
+logfacility_v6="chprobe_icmp_ipv6[$(echo $count)]"
+errordump=/home/chprobe/chprobe_debug.log
+debug=true
+
+# Debug
+chprobe_debug () {
+echo "##### DEBUG LOG - $(date) #####" >> $errordump && dmesg | tail -n 50 >> $errordump && journalctl -n 100 >> $errordump && pgrep -fa 'chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe' >> $errordump && echo "##### DEBUG LOG - $(date) #####" >> $errordump
+}
 
 # Make sure we're not overloaded with scripts
-while [ `pgrep -f 'chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe' | wc -l` -ge 100 ];do echo "[chprobe_error] We've got many scripts running. Some other script is hanging us or the host(s) is not very responsive. Sending SIGTERM to all scripts and trying to SIGINT daemons" | logger -p local5.err && kill $(pgrep -f "chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe" | awk '{print $1}') && kill -2 $(pgrep -f "ping" | awk '{print $1}'); done
+while [ `pgrep -f 'chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe' | wc -l` -ge 90 ]
+	do echo "[chprobe_error] We've got many scripts running. Some other script is hanging us or the host(s) is not very responsive. Sending SIGTERM to all scripts and trying to SIGINT daemons" | logger -p local5.err
+        	if [ $debug == "true" ]
+	        then chprobe_debug
+	        fi
+kill $(pgrep -f "chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe" | awk '{print $1}')
+kill -2 $(pgrep -f "ping" | awk '{print $1}')
+done
 
 # We wait until bbk/iperf3 daemons are done so we don't collide
-while [ `pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -w` -ge 1 ];do sleep 1;done
+backoff=0
+while [ `pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -w` -ge 1 ];do sleep 1 && 
+backoff=$(( $backoff + 1 ))
+if [ $backoff -ge 180 ]; then
+echo "$logfacility We broke out of the loop because we waited ($backoff). This could be bad" | logger -p local5.err && break
+fi
+done
+
 
 while true
 do
         case "$1" in
                 -v4)
 
-ping -4 -q -w $deadline -i $interval -s $icmp_size $icmp_target | xargs | sed 's/\<loss\>//g' | awk '{print $2,$26,$18,$20}' | tr -d ',' | sed 's!/! !' | sed 's!/! !' | sed 's!/! !' | tr -d '%' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_icmp[$(echo $count)]: $icmp_size $interval /" >>/var/log/chprobe_icmp.log
+ping -4 -q -w $deadline -i $interval -s $icmp_size $icmp_target | xargs | sed 's/\<loss\>//g' | awk '{print $2,$26,$18,$20}' | tr -d ',' | sed 's!/! !' | sed 's!/! !' | sed 's!/! !' | tr -d '%' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) $logfacility: $icmp_size $interval /" >>/var/log/chprobe_icmp.log
 ;;
 
 		-v6)
 
-ping -6 -q -w $deadline -i $interval -s $icmp_size $icmp_target | xargs | sed 's/\<loss\>//g' | awk '{print $25,$24,$16,$17}' | tr -d ',' | sed 's!/! !' | sed 's!/! !' | sed 's!/! !' | tr -d '%|packet|ms|rivd|=' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_icmp_ipv6[$(echo $count)]: $icmp_size $interval $icmp_target /" | tr -s ' ' >>/var/log/chprobe_icmp.log
+ping -6 -q -w $deadline -i $interval -s $icmp_size $icmp_target | xargs | sed 's/\<loss\>//g' | awk '{print $25,$24,$16,$17}' | tr -d ',' | sed 's!/! !' | sed 's!/! !' | sed 's!/! !' | tr -d '%|packet|ms|rivd|=' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) $logfacility_v6: $icmp_size $interval $icmp_target /" | tr -s ' ' >>/var/log/chprobe_icmp.log
 
 ;;
                                 -h)  cat <<USAGE

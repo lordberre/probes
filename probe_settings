@@ -33,8 +33,8 @@ MAILTO=root
 # *  *  *  *  * user-name  command to be executed
 */6  *  *  *  * root /home/chprobe/./udp_iperf3_client_merged.sh -us &> /dev/null
 */5  *  *  *  * root /home/chprobe/./udp_iperf3_client_merged.sh -ds &> /dev/null
-*/16 *  *  *  * root /home/chprobe/./tcp_iperf3_client.sh &> /dev/null
-*/15 *  *  *  * root /home/chprobe/./tcp_iperf3_client_reversed.sh &> /dev/null
+*/16 *  *  *  * root /home/chprobe/./tcp_iperf3_clientv3.sh -g -u -4 &> /dev/null
+*/15 *  *  *  * root /home/chprobe/./tcp_iperf3_clientv3.sh -g -d -4 &> /dev/null
 */30 *  *  *  * root /home/chprobe/./upnpc-probe.sh > /dev/null
 */30 *  *  *  * root /home/chprobe/./probemanager managerupdate &> /dev/null
 */60 *  *  *  * root /home/chprobe/./probemanager update &> /dev/null
