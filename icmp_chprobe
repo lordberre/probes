@@ -16,6 +16,7 @@ echo "##### DEBUG LOG - $(date) #####" >> $errordump && dmesg | tail -n 50 >> $e
 }
 
 # Make sure we're not overloaded with scripts
+<<<<<<< HEAD
 while [ `pgrep -f 'chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe' | wc -l` -ge 90 ]
 	do echo "[chprobe_error] We've got many scripts running. Some other script is hanging us or the host(s) is not very responsive. Sending SIGTERM to all scripts and trying to SIGINT daemons" | logger -p local5.err
         	if [ $debug == "true" ]
@@ -24,6 +25,9 @@ while [ `pgrep -f 'chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe' | wc -
 kill $(pgrep -f "chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe" | awk '{print $1}')
 kill -2 $(pgrep -f "ping" | awk '{print $1}')
 done
+=======
+while [ `pgrep -f 'chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe' | wc -l` -ge 100 ];do echo "[chprobe_error] We've got many scripts running. Some other script is hanging us or the host(s) is not very responsive. Sending SIGTERM to all scripts and trying to SIGINT daemons" | logger -p local5.err && kill $(pgrep -f "chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe" | awk '{print $1}') && kill -2 $(pgrep -f "ping" | awk '{print $1}'); done
+>>>>>>> master
 
 # We wait until bbk/iperf3 daemons are done so we don't collide
 backoff=0
