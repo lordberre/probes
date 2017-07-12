@@ -1,5 +1,9 @@
 #!/bin/bash
+<<<<<<< HEAD
 # Version 1.45
+=======
+# Version 1.3
+>>>>>>> master
 
 while true
 do
@@ -31,8 +35,13 @@ urlz="curl -m 3 -s -o /dev/null -w \"%{http_code}\" \$ip_url"
 urlcheck=$(eval $urlz)
 
 # Use cached ip if remote server is not responding
+<<<<<<< HEAD
 if [ $urlcheck -ne 200 ]; then target="$(cat /var/ip-udp.txt)"
         else target="$(curl -m 3 -s $ip_url)" && curl -m 3 -s -o /var/ip-udp.txt $ip_url
+=======
+if [ $urlcheck -ne 200 ]; then target="$(cat /var/ip_udp.txt)"
+        else target="$(curl -m 3 -s $ip_url)" && curl -m 3 -s -o /var/ip_udp.txt $ip_url
+>>>>>>> master
 fi
 
 # Daemon settings
