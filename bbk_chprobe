@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 2.37.2 (BBK backoff) 
+# Version 2.39.3 (BBK backoffv2) 
 
 # Dont touch this
 zone=x
@@ -33,7 +33,7 @@ bbk_remotestatus="$(curl --retry 2 -m 3 -s -XGET $bbk_remoteurl)"
  }
 
 # In case two or more tests are executed exactly at the same time, create some random delay
-# We only check abscence of bbk daemons, since the iperf3 server will take care of some collisions. It's a different story if more than one server is used in the same zone, this scenario currently not supported
+# We only check abscence of bbk daemons, since the iperf3 server will take care of some collisions. It's a different story if more than one server is used in the same zone, this scenario is currently not supported
 multiple_bbk () {
 if [ $(pgrep -f 'bbk' | wc -l) -ge 3 ] || [ $multivar -eq 1 ]; then        
 	if [ $ip_version = "4" ]; then
@@ -60,13 +60,9 @@ fi
  }
 
 remotelocal_loop () {
-#if [ $zone != "x" ]; then
-#sleep $probetimer && reinit_status
-#else
-reinit_status
-#fi
+reinit_status; multiple_bbk
 while [ $bbk_remotestatus -eq 1 ] || [ $localstatus -ge 1 ]
-do reinit_status; echo "[$logtag] sleeping 3-$probetimer sec, reason: [remote: $bbk_remotestatus (zone=$zone). local: $localstatus"] | logger -p notice && sleep $[ ( $RANDOM % $probetimer ) + 3]s; multiple_bbk; reinit_status
+do reinit_status; echo "[$logtag] sleeping 3-$probetimer sec, reason: [remote: $bbk_remotestatus (zone=$zone). local: $localstatus multivar: $multivar]" | logger -p notice && sleep $[ ( $RANDOM % $probetimer ) + 3]s; multiple_bbk; reinit_status
 done
  }
 
@@ -124,7 +120,7 @@ if [ $urlcheck -ne 200 ]; then probetimer="$(cat /var/prober_timer.txt)"
 fi
 
 # Sleep for a unique time and then reintroduce urls
-remotelocal_loop; sleep $probetimer; remotelocal_loop
+remotelocal_loop
 fi
 
 # Check if global zone is disabled
@@ -153,10 +149,17 @@ if [ $bbk_remotestatus -eq 1 ] || [ $localstatus -ge 1 ]; then
 					fi
 fi
 
+unique_sleep () {
+if [ $zone != "x" ];then 
+sleep $(expr $probetimer \* $probetimer / 2 + $probetimer + $probetimer);remotelocal_loop
+else remotelocal_loop
+fi
+}
+
 # Allocate the zone and start the desired test
         case "$ip_version" in
                 4)
-remotelocal_loop
+unique_sleep
 setzone 1; echo "[$logtag] Starting bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice &&
 bbk_cli --live --quiet | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) $logtag: /" >>/var/log/chprobe_bbk.log &&
 
@@ -164,7 +167,7 @@ bbk_cli --live --quiet | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) $l
 setzone 0; echo "[$logtag] Finished bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice
 ;;
 		6)
-remotelocal_loop
+unique_sleep
 setzone 1; echo "[$logtag_ipv6] Starting bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice &&
 bbk_cli --live --quiet --v6 | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) $logtag_ipv6: /" >>/var/log/chprobe_bbk.log &&
 
