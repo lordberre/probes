@@ -1,5 +1,6 @@
 #!/bin/bash
-# Version 2.43.6 (offline mode support and revert: busy_retryv2, revert temp retry, busyloop)
+# Version 2.43.7 (offline mode support and revert: busy_retryv2, revert temp retry, busyloop)
+# select-server fix for when global zone is disabled
 # Note: Some variables are named "bbk"-something since we're using the same zone functionallity
 
 # Dont touch this
@@ -121,7 +122,9 @@ urlz="curl -m 3 --retry 2 -s -o /dev/null -w \"%{http_code}\" \$ip_url"
 urlcheck=$(eval $urlz)
 }
 
+
 # Select server to use
+select_server () {
 if [ $zone != "z" ]; then
 # Use cached ip if remote server is not responding
 	remoteurl_vars $ipfile
@@ -130,6 +133,8 @@ if [ $zone != "z" ]; then
 	fi
 else : # Do nothing, our server will be determined by our zone
 fi
+}
+select_server
 
 # Daemon settings
 
@@ -215,6 +220,9 @@ urlcheck=$(eval $urlz)
 fi
 # Check if global zone is disabled
 if [ $zone = "x" ];then echo "[$logtag] Seems that your global zone is disabled, hope this is what you want" | logger -p notice &&
+
+# Select server since we skipped it earlier (script was ran with -g)
+select_server
 
 # Change reinit function since we don't care about remote zone anymore
 reinit_status () {
