@@ -1,9 +1,8 @@
-current_version="0.96.18_beta"
+current_version="0.96.18"
 
 # Known issues
 # Last update: v.0.96.18
-1. Multiple iperf3 tests wating for a busy server will fail sometimes when exiting the loop, due to that the server might become busy during this short interval
-2. The contention loops in BBK/iperf3 are also effected by a busy iperf3 server. There should different cases for when the server is busy and when the iperf3 is actually running the test.
+-
 
 # v0.93
 1. Fix issue with upnpc-script when IPv6 active in client

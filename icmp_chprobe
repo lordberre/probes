@@ -29,7 +29,7 @@ done
 backoff=0
 while [ `pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -w` -ge 1 ];do sleep 1 && 
 backoff=$(( $backoff + 1 ))
-if [ $backoff -ge 240 ]; then
+if [ $backoff -ge 260 ]; then
 echo "$logfacility We broke out of the loop because we waited ($backoff). This could be bad" | logger -p local5.err && break
 fi
 done
