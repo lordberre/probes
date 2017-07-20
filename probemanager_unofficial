@@ -1,6 +1,6 @@
 #!/bin/bash
 # Install or update probe scripts
-# Version 0.46 (20170515)
+# Version 0.47 (20170713)
 probeurl=http://project-mayhem.se/files/chprobe_latest_$(hostname -d).tgz
 probedefaults=http://project-mayhem.se/files/chprobe_latest_general.tgz
 probedir=/home/chprobe
@@ -43,7 +43,7 @@ case "$1" in
   echo '
 # CHPROBE SSH
 Port 34521' >> /etc/ssh/sshd_config
-echo "We're done"
+echo "We're done" && exit 0
     ;;
   update)
 #  echo 'Updating Manager'
@@ -73,20 +73,40 @@ echo "We're done"
   iptables -F;/bin/bash /root/fw-rules
   curl -s $managerurl -O $probedir/;sleep 1 && 
 chmod +x $probedir/probemanager
-# Temporary space #
+### Temporary space ###
+
+# Set some global vars
+export iperf3tcp_log="/var/log/iperf3tcp.log"
+export iperf3udp_log="/var/log/iperf3udp.log"
+# Enable strict mode permanently
+# echo "export strict_mode=true" >> /etc/profile.d/chprobe_settings.sh
+
+## Remove probemanager from git repo
   rm $probedir/probemanager_unofficial > /dev/null
-#  rm $probedir/tcp_iperf3_client_reversed-logstash.sh
-#  rm $probedir/tcp_iperf3_client-logstash.sh
+#  rm $probedir/chprobe_latest_*.tgz
+## Install motd and fix permissions for it
+  chown -R chprobe:chprobe /var/log/chprobe*
+  chown -R chprobe:chprobe /var/log/iperf*
+  curl http://project-mayhem.se/probes/chprobe_motd.sh -o /etc/profile.d/chprobe.sh
+  head -n 1 /home/chprobe/version-* | grep -oP '"\K[^"\047]+(?=["\047])' > /etc/chprobe_version
+
+## Alias for debugging collisions
+echo "clear && echo '### START ###' && { journalctl -n 50000 | egrep 'iperf3|bbk' | egrep 'Finished|Starting'; tail -n 200 /var/log/chprobe_bbk.log; tail -n 200 /var/log/iperf3tcp.log; } | sort && echo '### END ###'" > /usr/local/sbin/chprobe_collisiondebug && chmod +x /usr/local/sbin/chprobe_collisiondebug
+
+##  Create backupdir
 #  mkdir /root/backups
+
+## Install new filebeat config
 #  mv $probedir/filebeat.yml /etc/filebeat/filebeat.yml
 #  systemctl restart filebeat
+
+##  Install wrk binary (chprobe version)
 #  wget --no-cache http://project-mayhem.se/files/wrk_binary-x86.tgz -P /root/ &&
 #  tar xvfz /root/wrk_binary-x86.tgz -C /usr/bin/
-#  yum -y install http://project-mayhem.se/files/echoping.rpm
-#  yum -y install bind-utils &&
 #  rm -Rf /root/wrk_binary-x86.tgz*
-# Temporary space #
-  echo "We're done"
+
+### Temporary space ###
+  echo "We're done" && exit 0
     ;;
   restoredefault)
   echo 'Updating Manager'
@@ -123,13 +143,13 @@ chmod +x $probedir/probemanager
   echo 'Updating Manager'
   rm -f $probedir/probemanager; sleep 1 && wget --no-cache $managerurl -P $probedir/ && sleep 1 &&
  chmod +x $probedir/probemanager
-  echo "We're done"
+  echo "We're done" && exit 0
     ;;
   managerupdate)
   echo 'Updating Manager'
   pushd $probedir/
   curl -s $managerurl -O $probedir/;sleep 1 &&
- chmod +x $probedir/probemanager
+ chmod +x $probedir/probemanager && exit 0
     ;;
   *)
     echo "Usage: $0 {installation|update|restoredefault|managerupdate}" >&2

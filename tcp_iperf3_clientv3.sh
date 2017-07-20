@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 2.38.2 (BBK/zone integration) "wow will this even work"
+# Version 2.43.6 (offline mode support and revert: busy_retryv2, revert temp retry, busyloop)
 # Note: Some variables are named "bbk"-something since we're using the same zone functionallity
 
 # Dont touch this
@@ -12,6 +12,9 @@ probename="$(hostname -d)"
 
 # Probe timer (default 5 sec) Note: This will be owerwritten if global zone is used
 probetimer=5
+
+# Logdir
+iperf3log="/var/log/iperf3tcp.log"
 
 # Should the script continue even if remote server is inresponsive? Default is true
 force_start=true
@@ -31,7 +34,7 @@ bbk_remotestatus="$(curl -m 3 --retry 2 -s -XGET $bbk_remoteurl)"
  }
 
 # In case two or more tests are executed exactly at the same time, create some random delay
-# We only check abscence of bbk daemons, since the iperf3 server will take care of some collisions. It's a different story if more than one server is used in the same zone, this scenario currently not supported
+# We only check abscence of bbk daemons, since the iperf3 server will take care of some collisions. It's a different story if more than one server is used in the same zone, this scenario is currently not supported
 multiple_bbk () {
 if [ $(pgrep -f 'bbk' | wc -l) -ge 3 ] || [ $multivar -eq 1 ]; then
         if [ $ip_version = "4" ]; then
@@ -129,17 +132,43 @@ else : # Do nothing, our server will be determined by our zone
 fi
 
 # Daemon settings
+
+serverbusy_loop () {
+while iperf3 -c $target -4 -t 1 | grep busy; do
+sleep $[ ( $RANDOM % $probetimer ) + 3]s && echo "[$logtag] waiting cuz server is busy" | logger -p info
+done
+remotelocal_loop
+}
+
 if [ $direction = "upstream" ]; then logtag=chprobe_iperf3tcp_us[$(echo $count)]
 tcpdaemon () {
-/bin/iperf3 --client $target -4 -T $direction -P 15 -t 12 -O 2 | egrep 'SUM.*rece' | awk '/Mbits\/sec/ {print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility
+/bin/iperf3 --client $target -4 -T $direction -P 15 -t 12 -O 2 | egrep 'SUM.*rece|busy' | awk '{print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility
 }
 
 elif [ $direction = "downstream" ]; then logtag=chprobe_iperf3tcp_ds[$(echo $count)]
 tcpdaemon () {
-/bin/iperf3 --client $target -4 -T $direction -R -P 15 -t 12 -O 2 | egrep 'SUM.*rece' | awk '/Mbits\/sec/ {print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility
+/bin/iperf3 --client $target -4 -T $direction -R -P 15 -t 12 -O 2 | egrep 'SUM.*rece|busy' | awk '{print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility
 }
         else echo 'No direction specified, exiting.' && exit 1
 fi
+
+# Make sure that the test is performed and not "skipped" due to the server becoming busy after we exited the first busy loop
+busy_failcheck () {
+checkbusy="$(tail -1 $iperf3log | grep $count | grep busy | wc -l)"
+busyfail=0
+while [ $checkbusy -eq 1 ]; do
+echo "[$logtag] Everything seemed ok but we didn't run any test, looping until server is not busy ($busyfail)" | logger -p info && 
+sleep $[ ( $RANDOM % 20 ) + 11]s && 
+tcpdaemon
+checkbusy="$(tail -1 $iperf3log | grep $count | grep busy | wc -l)"
+
+# Anti fail
+busyfail=$(( $busyfail + 1 ))
+if [ $busyfail -ge 20 ]; then
+echo "[$logtag] Giving up, since we didn't manage to access the server for over $busyfail retries. How can it be this busy?" | logger -p local5.err && break
+fi
+done
+}
 
 ### WiFi stuff
 iwnic=$(ifconfig | grep wl | awk '{print $1}' | tr -d ':') # Is there a wireless interface?
@@ -156,6 +185,34 @@ htparse="iw \$iwnic station dump | egrep 'tx bitrate|signal:' | xargs | sed 's/\
 vhtparse="iw \$iwnic station dump | egrep 'tx bitrate|signal:' | xargs | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$15,\$18,\$19,\$20}' | tr -d 'MHz' | logger -t tx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'rx bitrate|signal:' | xargs | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$15,\$18,\$19,\$20}' | tr -d 'MHz' | logger -t rx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'bytes|packets|retries|failed' | xargs | tr -d 'rx|tx|bytes|packets|retries|failed:' | tr -s ' ' | logger -t iw_counters[\$(echo \$count)] -p \$logfacility"
 ####
 
+# If global zone, then set necessary variables before going further.
+if [ $zone = "z" ];then echo "[$logtag] Using global zone" | logger -p notice && zone="$(curl -m 3 --retry 2 -s -XGET $globalzone_url)"
+
+# Go into offline mode if the remote server is inresponsive
+if [ $? -ne 0 ]; then
+zone=x && echo "[$logtag] Zone disabled due to remote server errors ($?). We're in offline mode" | logger -p local5.err && target="$(cat $cachefile)" && probetimer="$(cat /var/probe_timer.txt)"
+fi
+
+# Sleep for a unique time and then reintroduce urls
+remotelocal_loop; sleep $probetimer; remotelocal_loop
+fi
+
+# Run the remote check, then use a unique timer to better avoid collisionss
+if [ $zone != "x" ]; then
+ip_url="http://project-mayhem.se/probes/$(hostname -d)_timer.txt"
+urlz="curl -m 3 --retry 2 -s -o /dev/null -w \"%{http_code}\" \$ip_url"
+urlcheck=$(eval $urlz)
+
+# Use cached ip if remote server is not responding
+	if [ $urlcheck -ne 200 ]; then probetimer="$(cat /var/probe_timer.txt)" || probetimer=5
+        else probetimer="$(curl -m 3 --retry 2 -s $ip_url)" &&
+	curl -m 3 --retry 2 -s -o /var/probe_timer.txt $ip_url
+
+# Also use zone specific server
+ 	remoteurl_vars zone$zone-server && target="$(curl -m 3 --retry 2 -s $ip_url)" &&
+	curl -m 3 --retry 2 -s -o /var/ip_tcp.txt $ip_url
+	fi
+fi
 # Check if global zone is disabled
 if [ $zone = "x" ];then echo "[$logtag] Seems that your global zone is disabled, hope this is what you want" | logger -p notice &&
 
@@ -164,26 +221,6 @@ reinit_status () {
 localstatus="$(pgrep -f 'bbk_cli|wrk|iperf3 --client' | wc -l)"
  }
 bbk_remotestatus=0
-fi
-
-# If global zone, then set necessary variables before going further
-if [ $zone = "z" ];then echo "[$logtag] Using global zone" | logger -p notice && zone="$(curl -m 3 --retry 2 -s -XGET $globalzone_url)"
-
-# Run the remote check, then use a unique timer to better avoid collisionss
-ip_url="http://project-mayhem.se/probes/$(hostname -d)_timer.txt"
-urlz="curl -m 3 --retry 2 -s -o /dev/null -w \"%{http_code}\" \$ip_url"
-urlcheck=$(eval $urlz)
-
-# Use cached ip if remote server is not responding
-if [ $urlcheck -ne 200 ]; then probetimer="$(cat /var/prober_timer.txt)"
-        else probetimer="$(curl -m 3 --retry 2 -s $ip_url)" && curl -m 3 --retry 2 -s -o /var/probe_timer.txt $ip_url
-
-# Also use zone specific server
-remoteurl_vars zone$zone-server && target="$(curl -m 3 --retry 2 -s $ip_url)" && curl -m 3 --retry 2 -s -o /var/ip_tcp.txt $ip_url
-fi
-
-# Sleep for a unique time and then reintroduce urls
-remotelocal_loop; sleep $probetimer; remotelocal_loop
 fi
 
 # Iperf daemon and condititions
@@ -197,18 +234,19 @@ remotelocal_loop
 case "$(pgrep -f "iperf3 --client" | wc -w)" in
 
 0)  echo "[$logtag] Let's see if we can start the tcp daemon" | logger -p info
-    while iperf3 -c $target -4 -t 1 | grep busy; do remotelocal_loop; sleep $[ ( $RANDOM % $probetimer ) + 3]s;remotelocal_loop && echo "[$logtag] waiting cuz server is busy" | logger -p info;done; remotelocal_loop &&
+    serverbusy_loop
     echo "[$logtag] Starting $logtag [debug: $localstatus | $(pgrep -f 'bbk_cli|iperf3 --client' | wc -l)]" | logger -p notice
-    setzone 1; tcpdaemon && echo "[$logtag] tcp daemon finished" | logger -p info &&
+    setzone 1; tcpdaemon;busy_failcheck && echo "[$logtag] tcp daemon finished" | logger -p info &&
         if [ $iwdetect -gt 0 ]; then
             if [ $wififreq -lt 2500 ]; then phy=ht && eval $htparse;else
                     if [ $phydetect -ge 1 ]; then phy=vht && eval $vhtparse;else phy=ht eval $htparse;fi;fi
             else echo 'No WiFi NIC detected'>/dev/stdout;fi
 ;;
 1)  echo "[$logtag] iperf tcp daemon is already running" | logger -p info
-          while [ `pgrep -f 'iperf3 --client|bbk_cli|wrk' | wc -w` -ge 1 ];do remotelocal_loop; sleep $[ ( $RANDOM % $probetimer ) + 3]s; remotelocal_loop && echo "[$logtag] waiting cuz either an iperf3 or a bbk daemon is running" | logger -p info;done && remotelocal_loop &&
+          while [ `pgrep -f 'iperf3 --client|bbk_cli|wrk' | wc -w` -ge 1 ];do remotelocal_loop; sleep $[ ( $RANDOM % $probetimer ) + 3]s; remotelocal_loop && echo "[$logtag] waiting cuz either an iperf3 or a bbk daemon is running" | logger -p info;done
+	    serverbusy_loop
     echo "[$logtag] Starting $logtag [debug: $localstatus | $(pgrep -f 'bbk_cli|iperf3 --client' | wc -l)]" | logger -p notice
-    setzone 1; tcpdaemon && echo "[$logtag] Okey the daemon seems to be finished - starting our tcp daemon" | logger -p info
+    setzone 1; tcpdaemon;busy_failcheck && echo "[$logtag] tcp daemon finished" | logger -p info
         if [ $iwdetect -gt 0 ]; then
             if [ $wififreq -lt 2500 ]; then phy=ht && eval $htparse;else
                     if [ $phydetect -ge 1 ]; then phy=vht && eval $vhtparse;else phy=ht eval $htparse;fi;fi
@@ -246,17 +284,24 @@ if [ $bbk_remotestatus -eq 1 ] || [ $localstatus -ge 1 ]; then
                                         fi
 fi
 
+unique_sleep () {
+if [ $zone != "x" ];then
+remotelocal_loop;sleep $probetimer;remotelocal_loop
+else remotelocal_loop
+fi
+}
+
 # Allocate the zone and start the desired test
         case "$ip_version" in
                 4)
-remotelocal_loop
+unique_sleep
 start_iperf3 &&
 
 # Set zone status to 0 when done
 setzone 0; echo "[$logtag] Finished $logtag [debug: $localstatus | $(pgrep -f 'bbk_cli|iperf3 --client' | wc -l)]" | logger -p notice
 ;;
 		6)
-remotelocal_loop
+unique_sleep
 start_iperf3 &&
 
 # Set zone status to 0 when done
