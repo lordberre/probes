@@ -1,5 +1,6 @@
 #!/bin/bash
-# Version 2.43.6 (offline mode support and revert: busy_retryv2, revert temp retry, busyloop)
+# Version 2.43.7 (offline mode support and revert: busy_retryv2, revert temp retry, busyloop)
+# select-server fix for when global zone is disabled
 # Note: Some variables are named "bbk"-something since we're using the same zone functionallity
 
 # Dont touch this
@@ -121,7 +122,9 @@ urlz="curl -m 3 --retry 2 -s -o /dev/null -w \"%{http_code}\" \$ip_url"
 urlcheck=$(eval $urlz)
 }
 
+
 # Select server to use
+select_server () {
 if [ $zone != "z" ]; then
 # Use cached ip if remote server is not responding
 	remoteurl_vars $ipfile
@@ -130,6 +133,8 @@ if [ $zone != "z" ]; then
 	fi
 else : # Do nothing, our server will be determined by our zone
 fi
+}
+select_server
 
 # Daemon settings
 
@@ -142,12 +147,12 @@ remotelocal_loop
 
 if [ $direction = "upstream" ]; then logtag=chprobe_iperf3tcp_us[$(echo $count)]
 tcpdaemon () {
-/bin/iperf3 --client $target -4 -T $direction -P 15 -t 12 -O 2 | egrep 'SUM.*rece|busy' | awk '{print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility
+/usr/bin/iperf3 --client $target -4 -T $direction -P 15 -t 12 -O 2 | egrep 'SUM.*rece|busy' | awk '{print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility
 }
 
 elif [ $direction = "downstream" ]; then logtag=chprobe_iperf3tcp_ds[$(echo $count)]
 tcpdaemon () {
-/bin/iperf3 --client $target -4 -T $direction -R -P 15 -t 12 -O 2 | egrep 'SUM.*rece|busy' | awk '{print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility
+/usr/bin/iperf3 --client $target -4 -T $direction -R -P 15 -t 12 -O 2 | egrep 'SUM.*rece|busy' | awk '{print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility
 }
         else echo 'No direction specified, exiting.' && exit 1
 fi
@@ -182,7 +187,7 @@ htparse="iw \$iwnic station dump | egrep 'tx bitrate|signal:' | xargs | sed 's/\
 ####
 
 #### VHT TEMPLATE
-vhtparse="iw \$iwnic station dump | egrep 'tx bitrate|signal:' | xargs | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$15,\$18,\$19,\$20}' | tr -d 'MHz' | logger -t tx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'rx bitrate|signal:' | xargs | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$15,\$18,\$19,\$20}' | tr -d 'MHz' | logger -t rx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'bytes|packets|retries|failed' | xargs | tr -d 'rx|tx|bytes|packets|retries|failed:' | tr -s ' ' | logger -t iw_counters[\$(echo \$count)] -p \$logfacility"
+vhtparse="iw \$iwnic station dump | egrep 'tx bitrate|signal:' | xargs | sed 's/\[.*\]//' | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$7,\$10,\$11,\$12,\$13}' | tr -d 'MHz' | logger -t tx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'rx bitrate|signal:' | xargs | sed 's/\[.*\]//' | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$7,\$10,\$11,\$12,\$13}' | tr -d 'MHz' | logger -t rx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'bytes|packets|retries|failed' | xargs | tr -d 'rx|tx|bytes|packets|retries|failed:' | tr -s ' ' | logger -t iw_counters[\$(echo \$count)] -p \$logfacility"
 ####
 
 # If global zone, then set necessary variables before going further.
@@ -215,6 +220,9 @@ urlcheck=$(eval $urlz)
 fi
 # Check if global zone is disabled
 if [ $zone = "x" ];then echo "[$logtag] Seems that your global zone is disabled, hope this is what you want" | logger -p notice &&
+
+# Select server since we skipped it earlier (script was ran with -g)
+select_server
 
 # Change reinit function since we don't care about remote zone anymore
 reinit_status () {

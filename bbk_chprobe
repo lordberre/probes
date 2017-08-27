@@ -1,5 +1,6 @@
 #!/bin/bash
-# Version 2.39.3 (BBK backoffv2) 
+# Version 2.39.4 (BBK backoffv2) 
+# Quick fix for removing null data to not be parsed by logstash
 
 # Dont touch this
 zone=x
@@ -161,7 +162,7 @@ fi
                 4)
 unique_sleep
 setzone 1; echo "[$logtag] Starting bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice &&
-bbk_cli --live --quiet | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) $logtag: /" >>/var/log/chprobe_bbk.log &&
+bbk_cli --live --quiet | sed 's@-1@BBK_ERROR@g' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) $logtag: /" >>/var/log/chprobe_bbk.log &&
 
 # Set zone status to 0 when done
 setzone 0; echo "[$logtag] Finished bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice
@@ -169,7 +170,7 @@ setzone 0; echo "[$logtag] Finished bbk_cli [debug: $localstatus | $(pgrep -f 'b
 		6)
 unique_sleep
 setzone 1; echo "[$logtag_ipv6] Starting bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice &&
-bbk_cli --live --quiet --v6 | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) $logtag_ipv6: /" >>/var/log/chprobe_bbk.log &&
+bbk_cli --live --quiet --v6 | sed 's@-1@BBK_ERROR@g' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) $logtag_ipv6: /" >>/var/log/chprobe_bbk.log &&
 
 # Set zone status to 0 when done
 setzone 0; echo "[$logtag_ipv6] Finished bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice
