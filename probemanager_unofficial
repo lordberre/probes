@@ -23,7 +23,7 @@ case "$1" in
   chmod +x $probedir/installdb_udp
   chmod +x $probedir/smoke-slave
   chmod +x $probedir/smoke-slave-debug
-  chmod +x $probedir/smokeslave_fakepost
+  chmod +x $probedir/callhome.sh
   chmod +x $probedir/udp_iperf3* $probedir/udp_iperf2* $probedir/tcp_iperf3* $probedir/tcp_iperf2*
   chmod +x $probedir/upnpc-probe.sh
   chmod +x $probedir/icmp_chprobe
@@ -62,7 +62,7 @@ echo "We're done" && exit 0
   chmod +x $probedir/installdb_udp
   chmod +x $probedir/smoke-slave
   chmod +x $probedir/smoke-slave-debug
-  chmod +x $probedir/smokeslave_fakepost
+  chmod +x $probedir/callhome.sh
   chmod +x $probedir/udp_iperf3* $probedir/udp_iperf2* $probedir/tcp_iperf3* $probedir/tcp_iperf2*
   chmod +x $probedir/upnpc-probe.sh
   chmod +x $probedir/icmp_chprobe  
@@ -126,7 +126,7 @@ chmod +x $probedir/probemanager
   chmod +x $probedir/installdb_udp
   chmod +x $probedir/smoke-slave
   chmod +x $probedir/smoke-slave-debug
-  chmod +x $probedir/smokeslave_fakepost
+  chmod +x $probedir/callhome.sh
   chmod +x $probedir/udp_iperf3* $probedir/udp_iperf2* $probedir/tcp_iperf3* $probedir/tcp_iperf2*
   chmod +x $probedir/upnpc-probe.sh
   chmod +x $probedir/icmp_chprobe

@@ -1,6 +1,6 @@
 #!/bin/bash
-# Version 2.43.7 (offline mode support and revert: busy_retryv2, revert temp retry, busyloop)
-# select-server fix for when global zone is disabled
+# Version 2.43.8 (offline mode support and revert: busy_retryv2, revert temp retry, busyloop)
+# select-server fix for when global zone is disabled, changed dir temp files.
 # Note: Some variables are named "bbk"-something since we're using the same zone functionallity
 
 # Dont touch this
@@ -115,7 +115,7 @@ count=$(( ( RANDOM % 9999 )  + 1 ))
 # Use cached ip if remote server is not responding
 # Remote url stuff
 ipfile="ip.txt"
-cachefile="/var/ip_tcp.txt"
+cachefile="/var/chprobe/ip_tcp.txt"
 remoteurl_vars () {
 ip_url="http://project-mayhem.se/probes/$1"
 urlz="curl -m 3 --retry 2 -s -o /dev/null -w \"%{http_code}\" \$ip_url"
@@ -147,12 +147,12 @@ remotelocal_loop
 
 if [ $direction = "upstream" ]; then logtag=chprobe_iperf3tcp_us[$(echo $count)]
 tcpdaemon () {
-/bin/iperf3 --client $target -4 -T $direction -P 15 -t 12 -O 2 | egrep 'SUM.*rece|busy' | awk '{print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility
+/usr/bin/iperf3 --client $target -4 -T $direction -P 15 -t 12 -O 2 | egrep 'SUM.*rece|busy' | awk '{print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility
 }
 
 elif [ $direction = "downstream" ]; then logtag=chprobe_iperf3tcp_ds[$(echo $count)]
 tcpdaemon () {
-/bin/iperf3 --client $target -4 -T $direction -R -P 15 -t 12 -O 2 | egrep 'SUM.*rece|busy' | awk '{print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility
+/usr/bin/iperf3 --client $target -4 -T $direction -R -P 15 -t 12 -O 2 | egrep 'SUM.*rece|busy' | awk '{print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility
 }
         else echo 'No direction specified, exiting.' && exit 1
 fi
@@ -187,7 +187,7 @@ htparse="iw \$iwnic station dump | egrep 'tx bitrate|signal:' | xargs | sed 's/\
 ####
 
 #### VHT TEMPLATE
-vhtparse="iw \$iwnic station dump | egrep 'tx bitrate|signal:' | xargs | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$15,\$18,\$19,\$20}' | tr -d 'MHz' | logger -t tx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'rx bitrate|signal:' | xargs | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$15,\$18,\$19,\$20}' | tr -d 'MHz' | logger -t rx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'bytes|packets|retries|failed' | xargs | tr -d 'rx|tx|bytes|packets|retries|failed:' | tr -s ' ' | logger -t iw_counters[\$(echo \$count)] -p \$logfacility"
+vhtparse="iw \$iwnic station dump | egrep 'tx bitrate|signal:' | xargs | sed 's/\[.*\]//' | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$7,\$10,\$11,\$12,\$13}' | tr -d 'MHz' | logger -t tx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'rx bitrate|signal:' | xargs | sed 's/\[.*\]//' | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$7,\$10,\$11,\$12,\$13}' | tr -d 'MHz' | logger -t rx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'bytes|packets|retries|failed' | xargs | tr -d 'rx|tx|bytes|packets|retries|failed:' | tr -s ' ' | logger -t iw_counters[\$(echo \$count)] -p \$logfacility"
 ####
 
 # If global zone, then set necessary variables before going further.
@@ -195,7 +195,7 @@ if [ $zone = "z" ];then echo "[$logtag] Using global zone" | logger -p notice &&
 
 # Go into offline mode if the remote server is inresponsive
 if [ $? -ne 0 ]; then
-zone=x && echo "[$logtag] Zone disabled due to remote server errors ($?). We're in offline mode" | logger -p local5.err && target="$(cat $cachefile)" && probetimer="$(cat /var/probe_timer.txt)"
+zone=x && echo "[$logtag] Zone disabled due to remote server errors ($?). We're in offline mode" | logger -p local5.err && target="$(cat $cachefile)" && probetimer="$(cat /var/chprobe/probe_timer.txt)"
 fi
 
 # Sleep for a unique time and then reintroduce urls
@@ -209,13 +209,13 @@ urlz="curl -m 3 --retry 2 -s -o /dev/null -w \"%{http_code}\" \$ip_url"
 urlcheck=$(eval $urlz)
 
 # Use cached ip if remote server is not responding
-	if [ $urlcheck -ne 200 ]; then probetimer="$(cat /var/probe_timer.txt)" || probetimer=5
+	if [ $urlcheck -ne 200 ]; then probetimer="$(cat /var/chprobe/probe_timer.txt)" || probetimer=5
         else probetimer="$(curl -m 3 --retry 2 -s $ip_url)" &&
-	curl -m 3 --retry 2 -s -o /var/probe_timer.txt $ip_url
+	curl -m 3 --retry 2 -s -o /var/chprobe/probe_timer.txt $ip_url
 
 # Also use zone specific server
  	remoteurl_vars zone$zone-server && target="$(curl -m 3 --retry 2 -s $ip_url)" &&
-	curl -m 3 --retry 2 -s -o /var/ip_tcp.txt $ip_url
+	curl -m 3 --retry 2 -s -o /var/chprobe/ip_tcp.txt $ip_url
 	fi
 fi
 # Check if global zone is disabled
