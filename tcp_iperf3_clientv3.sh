@@ -1,6 +1,6 @@
 #!/bin/bash
-# Version 2.43.7 (offline mode support and revert: busy_retryv2, revert temp retry, busyloop)
-# select-server fix for when global zone is disabled
+# Version 2.43.8 (offline mode support and revert: busy_retryv2, revert temp retry, busyloop)
+# select-server fix for when global zone is disabled, changed dir temp files.
 # Note: Some variables are named "bbk"-something since we're using the same zone functionallity
 
 # Dont touch this
@@ -115,7 +115,7 @@ count=$(( ( RANDOM % 9999 )  + 1 ))
 # Use cached ip if remote server is not responding
 # Remote url stuff
 ipfile="ip.txt"
-cachefile="/var/ip_tcp.txt"
+cachefile="/var/chprobe/ip_tcp.txt"
 remoteurl_vars () {
 ip_url="http://project-mayhem.se/probes/$1"
 urlz="curl -m 3 --retry 2 -s -o /dev/null -w \"%{http_code}\" \$ip_url"
@@ -195,7 +195,7 @@ if [ $zone = "z" ];then echo "[$logtag] Using global zone" | logger -p notice &&
 
 # Go into offline mode if the remote server is inresponsive
 if [ $? -ne 0 ]; then
-zone=x && echo "[$logtag] Zone disabled due to remote server errors ($?). We're in offline mode" | logger -p local5.err && target="$(cat $cachefile)" && probetimer="$(cat /var/probe_timer.txt)"
+zone=x && echo "[$logtag] Zone disabled due to remote server errors ($?). We're in offline mode" | logger -p local5.err && target="$(cat $cachefile)" && probetimer="$(cat /var/chprobe/probe_timer.txt)"
 fi
 
 # Sleep for a unique time and then reintroduce urls
@@ -209,13 +209,13 @@ urlz="curl -m 3 --retry 2 -s -o /dev/null -w \"%{http_code}\" \$ip_url"
 urlcheck=$(eval $urlz)
 
 # Use cached ip if remote server is not responding
-	if [ $urlcheck -ne 200 ]; then probetimer="$(cat /var/probe_timer.txt)" || probetimer=5
+	if [ $urlcheck -ne 200 ]; then probetimer="$(cat /var/chprobe/probe_timer.txt)" || probetimer=5
         else probetimer="$(curl -m 3 --retry 2 -s $ip_url)" &&
-	curl -m 3 --retry 2 -s -o /var/probe_timer.txt $ip_url
+	curl -m 3 --retry 2 -s -o /var/chprobe/probe_timer.txt $ip_url
 
 # Also use zone specific server
  	remoteurl_vars zone$zone-server && target="$(curl -m 3 --retry 2 -s $ip_url)" &&
-	curl -m 3 --retry 2 -s -o /var/ip_tcp.txt $ip_url
+	curl -m 3 --retry 2 -s -o /var/chprobe/ip_tcp.txt $ip_url
 	fi
 fi
 # Check if global zone is disabled
