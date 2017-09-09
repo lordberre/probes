@@ -1,6 +1,6 @@
 #!/bin/bash
-# Version 2.39.4 (BBK backoffv2) 
-# Quick fix for removing null data to not be parsed by logstash
+# Version 2.39.5 (BBK backoffv2) 
+# Quick fix for removing null data to not be parsed by logstash. Changed tempfiles dir.
 
 # Dont touch this
 zone=x
@@ -116,8 +116,8 @@ urlz="curl --retry 2 -m 3 -s -o /dev/null -w \"%{http_code}\" \$ip_url"
 urlcheck=$(eval $urlz)
 
 # Use cached ip if remote server is not responding
-if [ $urlcheck -ne 200 ]; then probetimer="$(cat /var/prober_timer.txt)"
-        else probetimer="$(curl -m 3 --retry 2 -s $ip_url)" && curl -m 3 --retry 2 -s -o /var/probe_timer.txt $ip_url
+if [ $urlcheck -ne 200 ]; then probetimer="$(cat /var/chprobe/prober_timer.txt)"
+        else probetimer="$(curl -m 3 --retry 2 -s $ip_url)" && curl -m 3 --retry 2 -s -o /var/chprobe/probe_timer.txt $ip_url
 fi
 
 # Sleep for a unique time and then reintroduce urls
