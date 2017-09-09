@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 2.5 (TODO= CRON STUFF
+# Version 2.6 (TODO= CRON STUFF
 
 # Load config file
 chprobe_configfile="/var/chprobe/$(hostname -d).cfg"
@@ -118,7 +118,7 @@ MAILTO=$cron_user
 # |  |  |  |  .---- day of week (0 - 6) (Sunday=0 or 7) OR sun,mon,tue,wed,thu,fri,sat
 # |  |  |  |  |
 # *  *  *  *  * user-name  command to be executed
-*/$callhome_interval *  *  *  * $cron_user $probedir./smokeslave_fakepost > /dev/null" > /etc/crontab
+*/$callhome_interval *  *  *  * $cron_user $probedir./callhome.sh > /dev/null" > /etc/crontab
 
 if [ $chprobe_iperf3udp = "enable" ]; then
 echo "*/$iperf3udp_us_interval  *  *  *  * $cron_user $probedir./udp_iperf3_client_merged.sh -us &> /dev/null
@@ -298,6 +298,18 @@ echo $chprobe_timer > /var/chprobe/chprobe_timer.txt
 
 # Legacy
 echo $chprobe_timer > /var/chprobe_timer.txt
+
+# Enable ssh_tunnel service
+if [ $ssh_tunnel = "enable" ]; then
+	if [ `systemctl is-active sshtunnel` != 'active' ]; then
+	systemctl start sshtunnel && systemctl enable sshtunnel
+	fi
+fi
+
+# Reload necessary modules when config is being commited
+if [ $chprobe_commit = "enable" ]; then
+systemctl restart sshtunnel
+fi
 
 # Remove commit status in configuration file
 chprobe_commit=false && sed -i 's@chprobe_commit=true@chprobe_commit=false@g' $chprobe_configfile
