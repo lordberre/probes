@@ -1,0 +1,12 @@
+[Unit]
+Description=SSH tunnel to master
+After=syslog.target network.target auditd.service
+
+[Service]
+ExecStartPre=/usr/bin/bash -c "/usr/bin/systemctl set-environment IP=$(tail -1 /var/chprobe/tunnel_ip)"
+ExecStartPre=/usr/bin/bash -c "/usr/bin/systemctl set-environment PORT=$(tail -1 /var/chprobe/tunnel_port)"
+ExecStart=/usr/bin/autossh -M 0 -nNT -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -p 60022 -l jump -i /home/chprobe/.ssh/id_jump_rsa -R ${PORT}:localhost:34521 $IP
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
