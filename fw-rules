@@ -1,4 +1,4 @@
-# Version 1.3
+# Version 1.4
 
 # basic
 iptables -P INPUT ACCEPT
@@ -7,6 +7,7 @@ iptables -P OUTPUT ACCEPT
 iptables -A INPUT -i lo -m comment --comment loopback -j ACCEPT
 iptables -A INPUT -m state --state INVALID -j DROP
 iptables -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+iptables -A INPUT -p udp -m udp --dport 68 -m comment --comment Allow-DHCP-Renew -j ACCEPT
 
 # comhem speedtest 
 iptables -A INPUT -s 83.255.251.77 -j ACCEPT
