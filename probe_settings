@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 2.6 (TODO= CRON STUFF
+# Version 2.7
 
 # Load config file
 chprobe_configfile="/var/chprobe/$(hostname -d).cfg"
@@ -89,7 +89,7 @@ USAGE
     esac
 
 # Check IPv6 connectivity
-echo "Checking IPv6 connectivity, stay tuned..." &&
+echo "Checking IPv6 connectivity, stay tuned... (Your commit should be OK. Bye bye!)" &&
 
 # In case ping6 returns errors we assume IPv6 isn't working
 ping6 -q -c 1 2a00:1450:400f:802::2003
@@ -118,7 +118,8 @@ MAILTO=$cron_user
 # |  |  |  |  .---- day of week (0 - 6) (Sunday=0 or 7) OR sun,mon,tue,wed,thu,fri,sat
 # |  |  |  |  |
 # *  *  *  *  * user-name  command to be executed
-*/$callhome_interval *  *  *  * $cron_user $probedir./callhome.sh > /dev/null" > /etc/crontab
+*/$callhome_interval *  *  *  * $cron_user $probedir./callhome.sh > /dev/null
+*/5 *  *  *  * root bash /var/chprobe/./chprobe.sh > /etc/motd 2> /dev/null" > /etc/crontab
 
 if [ $chprobe_iperf3udp = "enable" ]; then
 echo "*/$iperf3udp_us_interval  *  *  *  * $cron_user $probedir./udp_iperf3_client_merged.sh -us &> /dev/null
@@ -307,8 +308,9 @@ if [ $ssh_tunnel = "enable" ]; then
 fi
 
 # Reload necessary modules when config is being commited
-if [ $chprobe_commit = "enable" ]; then
+if [ $chprobe_commit = "true" ]; then
 systemctl restart sshtunnel
+echo "$(date) - Configuration commit for $(hostname -d)" >> /var/log/chprobe_commits.log
 fi
 
 # Remove commit status in configuration file
