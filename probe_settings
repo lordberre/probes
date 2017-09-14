@@ -118,7 +118,7 @@ MAILTO=$cron_user
 # |  |  |  |  .---- day of week (0 - 6) (Sunday=0 or 7) OR sun,mon,tue,wed,thu,fri,sat
 # |  |  |  |  |
 # *  *  *  *  * user-name  command to be executed
-*/$callhome_interval *  *  *  * $cron_user $probedir./callhome.sh > /dev/null
+*/$callhome_interval *  *  *  * $cron_user $probedir./callhome.sh &> /dev/null
 */5 *  *  *  * root bash /var/chprobe/./chprobe.sh > /etc/motd 2> /dev/null" > /etc/crontab
 
 if [ $chprobe_iperf3udp = "enable" ]; then
@@ -221,6 +221,7 @@ echo "*/$icmp1_croninterval  *  *  *  * $cron_user $probedir./icmp_chprobe -v4 $
 if [ $chprobe_dns = "enable" ]; then
 	if [ $dig_server = "auto" ]; then dig_server_ipv6="$(nmcli dev show  | grep 'IP6.DNS\[1]' | awk {'print $2'})";fi
 echo "*/$dig_interval * * * * $cron_user $probedir./multi_chprobe -d $dig_server $dig_target 6 &> /dev/null" >> /etc/crontab
+fi
 
 if [ $chprobe_wrk = "enable" ]; then
 echo "*/$wrk_interval * * * * $cron_user $probedir./multi_chprobe -w $wrk_workers $wrk_sessions $wrk_duration $wrk_target &> /dev/null
