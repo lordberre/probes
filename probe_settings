@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 2.7
+# Version 2.7.2
 
 # Load config file
 chprobe_configfile="/var/chprobe/$(hostname -d).cfg"
@@ -170,6 +170,7 @@ echo "2-12/2 * * * * $cron_user $probedir./icmp_chprobe -v4 $icmp1_packets $icmp
 fi
 
 if [ $chprobe_dns = "enable" ]; then
+	if [ $dig_server = "auto" ]; then dig_server="$(nmcli dev show  | grep 'IP4.DNS\[1]' | awk {'print $2'})";fi
 echo "2-12/2 * * * * $cron_user $probedir./multi_chprobe -d $dig_server $dig_target 4 &> /dev/null
 18-28/2 * * * * $cron_user $probedir./multi_chprobe -d $dig_server $dig_target 4 &> /dev/null
 32-58/2 * * * * $cron_user $probedir./multi_chprobe -d $dig_server $dig_target 4 &> /dev/null" >> /etc/crontab
@@ -202,6 +203,7 @@ echo "2-12/2 * * * * $cron_user $probedir./multi_chprobe -e $https_target 6 &> /
 fi
 
 	if [ $chprobe_dns = "enable" ]; then
+        	if [ $dig_server = "auto" ]; then dig_server_ipv6="$(nmcli dev show  | grep 'IP6.DNS\[1]' | awk {'print $2'})";fi
 echo "2-12/2 * * * * $cron_user $probedir./multi_chprobe -d $dig_server_ipv6 $dig_target 6 &> /dev/null
 18-28/2 * * * * $cron_user $probedir./multi_chprobe -d $dig_server_ipv6 $dig_target 6 &> /dev/null
 32-58/2 * * * * $cron_user $probedir./multi_chprobe -d $dig_server_ipv6 $dig_target 6 &> /dev/null" >> /etc/crontab
@@ -215,6 +217,10 @@ echo "*/$icmp1_croninterval  *  *  *  * $cron_user $probedir./icmp_chprobe -v4 $
 */$icmp2_croninterval  *  *  *  * $cron_user $probedir./icmp_chprobe -v4 $icmp2_packets $icmp2_interval $icmp2_size $icmp2_target &> /dev/null
 */$icmp3_croninterval  *  *  *  * $cron_user $probedir./icmp_chprobe -v4 $icmp3_packets $icmp3_interval $icmp3_size $icmp3_target &> /dev/null" >> /etc/crontab
 		fi
+
+if [ $chprobe_dns = "enable" ]; then
+	if [ $dig_server = "auto" ]; then dig_server_ipv6="$(nmcli dev show  | grep 'IP6.DNS\[1]' | awk {'print $2'})";fi
+echo "*/$dig_interval * * * * $cron_user $probedir./multi_chprobe -d $dig_server $dig_target 6 &> /dev/null" >> /etc/crontab
 
 if [ $chprobe_wrk = "enable" ]; then
 echo "*/$wrk_interval * * * * $cron_user $probedir./multi_chprobe -w $wrk_workers $wrk_sessions $wrk_duration $wrk_target &> /dev/null
@@ -232,6 +238,7 @@ echo "*/$icmp_cron_interval_ipv6  *  *  *  * $cron_user $probedir./icmp_chprobe 
 fi
 
 if [ $chprobe_dns = "enable" ]; then
+        if [ $dig_server = "auto" ]; then dig_server="$(nmcli dev show  | grep 'IP6.DNS\[1]' | awk {'print $2'})";fi
 echo "*/$dig_interval * * * * $cron_user $probedir./multi_chprobe -d $dig_server_ipv6 $dig_target 6 &> /dev/null" >> /etc/crontab
 fi
 
@@ -286,7 +293,7 @@ delaycompress
 /var/log/chprobe_wanip.txt {
 daily
 rotate 0
-size 200
+size 1000
 }" > /etc/logrotate.d/chprobe
 /usr/bin/bash /etc/cron.daily/logrotate
 fi

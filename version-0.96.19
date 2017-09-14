@@ -96,6 +96,9 @@ current_version="0.96.19"
 4. Added optional feature "strict mode" for icmp/multi-tests to reduce overhead and response times at the cost of doing slightly less tests
 
 # v.0.96.19
-1. Config files........
-2. Merged minor hotfixes from v0.96.18+
-3. SSH tunnels......
+1. Introduced unique configuration files for every probe
+2. Major changes to probe_settings for more dynamic configuration
+3. Merged minor hotfixes from v0.96.18+
+4. Introduced ssh tunnels running as a systemd service with autossh for robustness
+5. Changes to callhome and upnpc scripts as a result of new core config
+6. Optimized dirs,permissions and firewall for Ansible management
