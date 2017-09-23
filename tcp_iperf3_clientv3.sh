@@ -3,6 +3,9 @@
 # select-server fix for when global zone is disabled, changed dir temp files.
 # Note: Some variables are named "bbk"-something since we're using the same zone functionallity
 
+# Fetch retransmits - Removed -T argument in iperf and using sed instead due to two columns. Also logstash needs rework
+# iperf3 -c iperf.comhem.com -P 5 -t 5 -p 5210 -R | egrep 'SUM.*receiver|SUM.*sender|busy' | awk '{print $6,$8}' | tr -d ':|receiver' | xargs | sed -e "s/^/$direction /"
+
 # Dont touch this
 zone=x
 ip_version=x
@@ -147,12 +150,12 @@ remotelocal_loop
 
 if [ $direction = "upstream" ]; then logtag=chprobe_iperf3tcp_us[$(echo $count)]
 tcpdaemon () {
-/usr/bin/iperf3 --client $target -4 -T $direction -P 15 -t 12 -O 2 | egrep 'SUM.*rece|busy' | awk '{print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility
+/usr/bin/iperf3 --client $target -4 -P 15 -t 12 -O 2 | egrep 'SUM.*receiver|SUM.*sender|busy' | awk '{print $6,$8}' | tr -d ':|receiver' | xargs | sed -e "s/^/$direction /" | logger -t iperf3tcp[$(echo $count)] -p $logfacility
 }
 
 elif [ $direction = "downstream" ]; then logtag=chprobe_iperf3tcp_ds[$(echo $count)]
 tcpdaemon () {
-/usr/bin/iperf3 --client $target -4 -T $direction -R -P 15 -t 12 -O 2 | egrep 'SUM.*rece|busy' | awk '{print $1,$7}' | tr -d ':' | logger -t iperf3tcp[$(echo $count)] -p $logfacility
+/usr/bin/iperf3 --client $target -4 -R -P 15 -t 12 -O 2 | egrep 'SUM.*receiver|SUM.*sender|busy' | awk '{print $6,$8}' | tr -d ':|receiver' | xargs | sed -e "s/^/$direction /" | logger -t iperf3tcp[$(echo $count)] -p $logfacility
 }
         else echo 'No direction specified, exiting.' && exit 1
 fi

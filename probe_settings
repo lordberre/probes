@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 2.7.3
+# Version 2.7.4
 
 # Load config file
 chprobe_configfile="/var/chprobe/$(hostname -d).cfg"
@@ -151,8 +151,10 @@ if [ $chprobe_bbk = "enable" ]; then
 echo "*/$chprobe_bbk_interval *  *  *  * $cron_user $probedir./bbk_chprobe -4 -g &> /dev/null" >> /etc/crontab
 fi
 
-if [ $chprobe_bbk_ipv6 = "enable" ] || [ $chprobe_bbk_ipv6 = "auto" ]; then
-echo "*/$chprobe_bbk_interval_ipv6 *  *  *  * $cron_user $probedir./bbk_chprobe -6 -g &> /dev/null" >> /etc/crontab
+if [ $ipmode = "dualstack" ]; then
+	if [ $chprobe_bbk_ipv6 = "enable" ] || [ $chprobe_bbk_ipv6 = "auto" ]; then
+	echo "*/$chprobe_bbk_interval_ipv6 *  *  *  * $cron_user $probedir./bbk_chprobe -6 -g &> /dev/null" >> /etc/crontab
+	fi
 fi
 
 # crontab IPv4 + strict scheduling
@@ -262,6 +264,7 @@ touch /var/lock/subsys/local
 /$cron_user/./fw-rules
 $probedir./smoke-slave
 $probedir./probemanager managerupdate && $probedir./probemanager update" > /etc/rc.local
+# mv $probedir/chprobe_syslog.conf /etc/rsyslog.d/
 chmod +x /etc/rc.d/rc.local
 fi
 
@@ -314,6 +317,9 @@ if [ $ssh_tunnel = "enable" ]; then
 	systemctl start sshtunnel && systemctl enable sshtunnel
 	fi
 fi
+
+# Load manually configured cronjobs if any
+# echo -e "\n$(for cronjobs in $chprobe_cronjob1 \ $chprobe_cronjob2 \ $chprobe_cronjob3; do echo -e $cronjobs;done)" >> /etc/crontab
 
 # Reload necessary modules when config is being commited
 if [ $chprobe_commit = "true" ]; then

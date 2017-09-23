@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 1.45.1. Changed dir for temp files.
+# Version 1.45.3. Changed dir for temp files. Remove sender in output for iperf3.2+ versions. Added two more ports.
 
 while true
 do
@@ -37,10 +37,10 @@ fi
 
 # Daemon settings
 if [ $direction = "upstream" ]; then
-udpdaemon="/usr/bin/iperf3 -u --client \$target -T \$direction -b \${arr[\$rand]} -t 60 -p \${portz[\$randport]} | egrep 'iperf Done' -B 3 | egrep 0.00-60.00 | awk '{print \$1,\$6,\$8,\$10,\$13,\$14.\$15,\$16,\$17,\$18}' | tr -d '(%)|:' | logger -t iperf3udp[\$(echo \$count)] -p \$logfacility"
+udpdaemon="/usr/bin/iperf3 -u --client \$target -T \$direction -b \${arr[\$rand]} -t 60 -p \${portz[\$randport]} | egrep 'iperf Done' -B 3 | egrep 0.00-60.00 | grep -v sender | awk '{print \$1,\$6,\$8,\$10,\$13,\$14.\$15,\$16,\$17,\$18}' | tr -d '(%)|:' | logger -t iperf3udp[\$(echo \$count)] -p \$logfacility"
 
 elif [ $direction = "downstream" ]; then
-udpdaemon="/usr/bin/iperf3 -u --client \$target -T \$direction -R -b \${arr[\$rand]} -t 60 -p \${portz[\$randport]} | egrep 'iperf Done' -B 3 | egrep 0.00-60.00 | awk '{print \$1,\$6,\$8,\$10,\$13,\$14.\$15,\$16,\$17,\$18}' | tr -d '(%)|:' | logger -t iperf3udp[\$(echo \$count)] -p \$logfacility"
+udpdaemon="/usr/bin/iperf3 -u --client \$target -T \$direction -R -b \${arr[\$rand]} -t 60 -p \${portz[\$randport]} | egrep 'iperf Done' -B 3 | egrep 0.00-60.00 | grep -v sender | awk '{print \$1,\$6,\$8,\$10,\$13,\$14.\$15,\$16,\$17,\$18}' | tr -d '(%)|:' | logger -t iperf3udp[\$(echo \$count)] -p \$logfacility"
 	else echo 'No direction specified, exiting.' && exit 1
 fi
 
@@ -70,7 +70,9 @@ portz[0]="5210"
 portz[1]="5215"
 portz[2]="5220"
 portz[3]="5225"
-randport=$[ $RANDOM % 4 ]
+portz[4]="5230"
+portz[5]="5235"
+randport=$[ $RANDOM % 6 ]
 
 # Only go into anti-collision loop if the bandwidth is 20m
 if [ ${arr[$rand]} == "20m" ]; then udp_anticollision=1
@@ -86,7 +88,7 @@ while [ `pgrep -f 'bbk|iperf3|wrk' | wc -w` -ge 30 ];do kill $(pgrep -f "iperf3|
 case "$(pgrep -f "iperf3 --client" | wc -w)" in
 
 0)  echo "[$logtag] Let's see if we can start the udp daemon" | logger -p info
-    while iperf3 -c $target -p ${portz[$randport]} -t 1 | grep busy; do randport=$[ $RANDOM % 4 ] && sleep $[ ( $RANDOM % 10 ) + 3]s && echo "[$logtag] server is busy. We slept a bit, now rolling the dice for the port" | logger -p info;done
+    while iperf3 -c $target -p ${portz[$randport]} -t 1 | grep busy; do randport=$[ $RANDOM % 6 ] && sleep $[ ( $RANDOM % 10 ) + 3]s && echo "[$logtag] server is busy. We slept a bit, now rolling the dice for the port" | logger -p info;done
     echo "[$logtag] udp daemon started - $direction" | logger -p info
 	eval $udpdaemon &
 	if [ $iwdetect -gt 0 ]; then
