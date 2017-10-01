@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 2.7.4
+# Version 2.7.5
 
 # Load config file
 chprobe_configfile="/var/chprobe/$(hostname -d).cfg"
@@ -205,7 +205,7 @@ echo "2-12/2 * * * * $cron_user $probedir./multi_chprobe -e $https_target 6 &> /
 fi
 
 	if [ $chprobe_dns = "enable" ]; then
-        	if [ $dig_server = "auto" ]; then dig_server_ipv6="$(nmcli dev show  | grep 'IP6.DNS\[1]' | awk {'print $2'})";fi
+        	if [ $dig_server_ipv6 = "auto" ]; then dig_server_ipv6="$(nmcli dev show  | grep 'IP6.DNS\[1]' | awk {'print $2'})";fi
 echo "2-12/2 * * * * $cron_user $probedir./multi_chprobe -d $dig_server_ipv6 $dig_target 6 &> /dev/null
 18-28/2 * * * * $cron_user $probedir./multi_chprobe -d $dig_server_ipv6 $dig_target 6 &> /dev/null
 32-58/2 * * * * $cron_user $probedir./multi_chprobe -d $dig_server_ipv6 $dig_target 6 &> /dev/null" >> /etc/crontab
@@ -215,21 +215,21 @@ fi
 # crontab IPv4 + no strict scheduling
         elif [ $strict_mode = "false" ]; then
                 if [ $chprobe_icmp = "enable" ]; then
-echo "*/$icmp1_croninterval  *  *  *  * $cron_user $probedir./icmp_chprobe -v4 $icmp1_packets $icmp1_interval $icmp1_size $icmp1_target &> /dev/null
-*/$icmp2_croninterval  *  *  *  * $cron_user $probedir./icmp_chprobe -v4 $icmp2_packets $icmp2_interval $icmp2_size $icmp2_target &> /dev/null
-*/$icmp3_croninterval  *  *  *  * $cron_user $probedir./icmp_chprobe -v4 $icmp3_packets $icmp3_interval $icmp3_size $icmp3_target &> /dev/null" >> /etc/crontab
+echo "*/$icmp_cron_interval  *  *  *  * $cron_user $probedir./icmp_chprobe -v4 $icmp1_packets $icmp1_interval $icmp1_size $icmp1_target &> /dev/null
+*/$icmp_cron_interval  *  *  *  * $cron_user $probedir./icmp_chprobe -v4 $icmp2_packets $icmp2_interval $icmp2_size $icmp2_target &> /dev/null
+*/$icmp_cron_interval  *  *  *  * $cron_user $probedir./icmp_chprobe -v4 $icmp3_packets $icmp3_interval $icmp3_size $icmp3_target &> /dev/null" >> /etc/crontab
 		fi
 
 if [ $chprobe_dns = "enable" ]; then
-	if [ $dig_server = "auto" ]; then dig_server_ipv6="$(nmcli dev show  | grep 'IP6.DNS\[1]' | awk {'print $2'})";fi
-echo "*/$dig_interval * * * * $cron_user $probedir./multi_chprobe -d $dig_server $dig_target 6 &> /dev/null" >> /etc/crontab
+	if [ $dig_server = "auto" ]; then dig_server="$(nmcli dev show  | grep 'IP4.DNS\[1]' | awk {'print $2'})";fi
+echo "*/$dig_interval * * * * $cron_user $probedir./multi_chprobe -d $dig_server $dig_target 4 &> /dev/null" >> /etc/crontab
 fi
 
 if [ $chprobe_wrk = "enable" ]; then
-echo "*/$wrk_interval * * * * $cron_user $probedir./multi_chprobe -w $wrk_workers $wrk_sessions $wrk_duration $wrk_target &> /dev/null
-*/$dig_interval * * * * $cron_user $probedir./multi_chprobe -d $dig_server $dig_target 4 &> /dev/null
-*/$https_interval * * * * $cron_user $probedir./multi_chprobe -e $https_target 4 &> /dev/null" >> /etc/crontab
+echo "*/$wrk_interval * * * * $cron_user $probedir./multi_chprobe -w $wrk_workers $wrk_sessions $wrk_duration $wrk_target &> /dev/null" >> /etc/crontab
 fi
+
+echo "*/$https_interval * * * * $cron_user $probedir./multi_chprobe -e $https_target 4 &> /dev/null" >> /etc/crontab
 
 	        if [ $ipmode = "dualstack" ]; then
 
@@ -241,7 +241,7 @@ echo "*/$icmp_cron_interval_ipv6  *  *  *  * $cron_user $probedir./icmp_chprobe 
 fi
 
 if [ $chprobe_dns = "enable" ]; then
-        if [ $dig_server = "auto" ]; then dig_server="$(nmcli dev show  | grep 'IP6.DNS\[1]' | awk {'print $2'})";fi
+        if [ $dig_server_ipv6 = "auto" ]; then dig_server_ipv6="$(nmcli dev show  | grep 'IP6.DNS\[1]' | awk {'print $2'})";fi
 echo "*/$dig_interval * * * * $cron_user $probedir./multi_chprobe -d $dig_server_ipv6 $dig_target 6 &> /dev/null" >> /etc/crontab
 fi
 
@@ -290,7 +290,7 @@ echo "# CREATED BY CHPROBE SCRIPT
 /var/log/chprobe*.log
 {
 weekly
-rotate 10
+rotate 2
 size 500K
 delaycompress
 }
@@ -318,12 +318,17 @@ if [ $ssh_tunnel = "enable" ]; then
 	fi
 fi
 
+# Check if iperf3 servers are manually configured and save target locally
+if [ $chprobe_iperf3tcp_target != "disable" ]; then
+echo $chprobe_iperf3tcp_target > /var/chprobe/ip_tcp.txt
+fi
+
 # Load manually configured cronjobs if any
 # echo -e "\n$(for cronjobs in $chprobe_cronjob1 \ $chprobe_cronjob2 \ $chprobe_cronjob3; do echo -e $cronjobs;done)" >> /etc/crontab
 
 # Reload necessary modules when config is being commited
 if [ $chprobe_commit = "true" ]; then
-systemctl restart sshtunnel
+# systemctl restart sshtunnel
 echo "$(date) - Configuration commit for $(hostname -d)" >> /var/log/chprobe_commits.log
 fi
 
