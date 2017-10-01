@@ -1,21 +1,30 @@
 #!/bin/bash
-# Version 2.43.8 (offline mode support and revert: busy_retryv2, revert temp retry, busyloop)
+# Version 2.44.0 (offline mode support and revert: busy_retryv2, revert temp retry, busyloop)
 # select-server fix for when global zone is disabled, changed dir temp files.
 # Note: Some variables are named "bbk"-something since we're using the same zone functionallity
 
-# Fetch retransmits - Removed -T argument in iperf and using sed instead due to two columns. Also logstash needs rework
+# New in 2.39.0: Fetch retransmits - Removed -T argument in iperf and using sed instead due to two columns. Also logstash needs rework
 # iperf3 -c iperf.comhem.com -P 5 -t 5 -p 5210 -R | egrep 'SUM.*receiver|SUM.*sender|busy' | awk '{print $6,$8}' | tr -d ':|receiver' | xargs | sed -e "s/^/$direction /"
+# New arguments/features in 2.44.0: Skip config files, force server, load probe-wide configuration for (for now just for target ip)
 
 # Dont touch this
 zone=x
 ip_version=x
 multivar=0
+skip_configfile=false
+forced_server=false
 
 # For global zone, if you want something else than hostname, then edit below
 probename="$(hostname -d)"
 
 # Probe timer (default 5 sec) Note: This will be owerwritten if global zone is used
 probetimer=5
+
+# File used for storing target ip regardless of source (configuration or url)
+cachefile="/var/chprobe/ip_tcp.txt"
+
+# Ridrect flag
+REDIRECT="/dev/null"
 
 # Logdir
 iperf3log="/var/log/iperf3tcp.log"
@@ -85,12 +94,14 @@ How to use: $0 -4 or -6 must be specified.
     -6) Force IPv6
     -z) Set collision zone (1,2,3,4 or 5) to avoid colliding with probes within the same zone.
     -g) Use remote global collision zone for the probe. (Use this if you've configured the zone on your remote server)
+    -s) Skip loading configuration file (use only if you've got issues)
+    -f) Force the server target (implies '-s'), must be used with server ip/hostname as argument, e.g: ./iperf3script -f x.x.x.x
 Note: When using zones, your test might not start immediately
 Example: $ ./iperf3script -d -4 -z 1
 USAGE
  }
 
-options=':z:46duhg'
+options=':z:f:46duhgs'
 while getopts $options option
 do
     case $option in
@@ -100,6 +111,8 @@ do
 	6  ) ip_version=6 && echo 'Not implemented yet' && exit 0 	;;
         d  ) direction=downstream       ;;
         u  ) direction=upstream       ;;
+        s  ) skip_configfile=true;chprobe_iperf3tcp_target=disable       ;;
+        f  ) skip_configfile=true;forced_server=true;chprobe_iperf3tcp_target=${OPTARG}       ;;
         h  ) usage; exit;;
         \? ) echo "Unknown option: -$OPTARG" >&2; exit 1;;
         :  ) echo "Missing option argument for -$OPTARG" >&2; exit 1;;
@@ -115,10 +128,18 @@ fi
 logfacility=local3.debug
 count=$(( ( RANDOM % 9999 )  + 1 ))
 
+# Load configuration file
+if [ $skip_configfile = "false" ]; then
+source /var/chprobe/$(hostname -d).cfg || skip_configfile=true
+
+# Also update the cache file, in case the script was run with '-s' or '-f' in between configuration commits
+echo $chprobe_iperf3tcp_target > $cachefile
+fi
+
+if [ $chprobe_iperf3tcp_target = "disable" ] 2> $REDIRECT; then
 # Use cached ip if remote server is not responding
 # Remote url stuff
 ipfile="ip.txt"
-cachefile="/var/chprobe/ip_tcp.txt"
 remoteurl_vars () {
 ip_url="http://project-mayhem.se/probes/$1"
 urlz="curl -m 3 --retry 2 -s -o /dev/null -w \"%{http_code}\" \$ip_url"
@@ -137,7 +158,8 @@ if [ $zone != "z" ]; then
 else : # Do nothing, our server will be determined by our zone
 fi
 }
-select_server
+select_server 2> $REDIRECT
+fi
 
 # Daemon settings
 
@@ -179,10 +201,10 @@ done
 }
 
 ### WiFi stuff
-iwnic=$(ifconfig | grep wl | awk '{print $1}' | tr -d ':') # Is there a wireless interface?
-iwdetect="$(grep up /sys/class/net/wl*/operstate | wc -l)" # Detect wireless interface state
-wififreq="$(iw $iwnic link | grep freq | awk '{print $2}')" # Detect frequency (2.4GHz or 5Ghz)
-phydetect="$(iw $iwnic link | grep VHT | wc -l)" # What PHY? (Legacy is not supported)
+iwnic=$(ifconfig 2> $REDIRECT | grep wl | awk '{print $1}' | tr -d ':') # Is there a wireless interface?
+iwdetect="$(grep up /sys/class/net/wl*/operstate 2> $REDIRECT | wc -l)" # Detect wireless interface state
+wififreq="$(iw $iwnic link 2> $REDIRECT | grep freq | awk '{print $2}')" # Detect frequency (2.4GHz or 5Ghz)
+phydetect="$(iw $iwnic link 2> $REDIRECT | grep VHT | wc -l)" # What PHY? (Legacy is not supported)
 #phy=$1 # Use argument instead for PHY instead
 
 #### HT TEMPLATE
@@ -205,11 +227,12 @@ fi
 remotelocal_loop; sleep $probetimer; remotelocal_loop
 fi
 
+if [ $chprobe_iperf3tcp_target = "disable" ] 2> $REDIRECT; then
 # Run the remote check, then use a unique timer to better avoid collisionss
-if [ $zone != "x" ]; then
-ip_url="http://project-mayhem.se/probes/$(hostname -d)_timer.txt"
-urlz="curl -m 3 --retry 2 -s -o /dev/null -w \"%{http_code}\" \$ip_url"
-urlcheck=$(eval $urlz)
+	if [ $zone != "x" ]; then
+	ip_url="http://project-mayhem.se/probes/$(hostname -d)_timer.txt"
+	urlz="curl -m 3 --retry 2 -s -o /dev/null -w \"%{http_code}\" \$ip_url"
+	urlcheck=$(eval $urlz)
 
 # Use cached ip if remote server is not responding
 	if [ $urlcheck -ne 200 ]; then probetimer="$(cat /var/chprobe/probe_timer.txt)" || probetimer=5
@@ -220,7 +243,11 @@ urlcheck=$(eval $urlz)
  	remoteurl_vars zone$zone-server && target="$(curl -m 3 --retry 2 -s $ip_url)" &&
 	curl -m 3 --retry 2 -s -o /var/chprobe/ip_tcp.txt $ip_url
 	fi
+	fi
+elif [ $forced_server = "true" ]; then target=$chprobe_iperf3tcp_target
+else target="$(cat $cachefile)" # Use server from configuration file
 fi
+
 # Check if global zone is disabled
 if [ $zone = "x" ];then echo "[$logtag] Seems that your global zone is disabled, hope this is what you want" | logger -p notice &&
 
@@ -248,9 +275,9 @@ case "$(pgrep -f "iperf3 --client" | wc -w)" in
     serverbusy_loop
     echo "[$logtag] Starting $logtag [debug: $localstatus | $(pgrep -f 'bbk_cli|iperf3 --client' | wc -l)]" | logger -p notice
     setzone 1; tcpdaemon;busy_failcheck && echo "[$logtag] tcp daemon finished" | logger -p info &&
-        if [ $iwdetect -gt 0 ]; then
-            if [ $wififreq -lt 2500 ]; then phy=ht && eval $htparse;else
-                    if [ $phydetect -ge 1 ]; then phy=vht && eval $vhtparse;else phy=ht eval $htparse;fi;fi
+        if [ $iwdetect -gt 0 ] 2> $REDIRECT; then
+            if [ $wififreq -lt 2500 ] 2> $REDIRECT; then phy=ht && eval $htparse;else
+                    if [ $phydetect -ge 1 ] 2> $REDIRECT; then phy=vht && eval $vhtparse;else phy=ht eval $htparse;fi;fi
             else echo 'No WiFi NIC detected'>/dev/stdout;fi
 ;;
 1)  echo "[$logtag] iperf tcp daemon is already running" | logger -p info
@@ -258,9 +285,9 @@ case "$(pgrep -f "iperf3 --client" | wc -w)" in
 	    serverbusy_loop
     echo "[$logtag] Starting $logtag [debug: $localstatus | $(pgrep -f 'bbk_cli|iperf3 --client' | wc -l)]" | logger -p notice
     setzone 1; tcpdaemon;busy_failcheck && echo "[$logtag] tcp daemon finished" | logger -p info
-        if [ $iwdetect -gt 0 ]; then
-            if [ $wififreq -lt 2500 ]; then phy=ht && eval $htparse;else
-                    if [ $phydetect -ge 1 ]; then phy=vht && eval $vhtparse;else phy=ht eval $htparse;fi;fi
+        if [ $iwdetect -gt 0 ] 2> $REDIRECT; then
+            if [ $wififreq -lt 2500 ] 2> $REDIRECT; then phy=ht && eval $htparse;else
+                    if [ $phydetect -ge 1 ] 2> $REDIRECT; then phy=vht && eval $vhtparse;else phy=ht eval $htparse;fi;fi
             else echo 'No WiFi NIC detected'>/dev/stdout;fi
 ;;
 *)  echo "[$logtag] multiple instances of iperf3 daemon running. Stopping & restarting iperf:" | logger -p info
@@ -281,7 +308,7 @@ then reinit_status; bs=$(eval $bbk_remotestatusv2)
 fi
 
 # Informational message
-echo "Running tests, look for messages/errors in journal or in your logdir. The test result is saved at /var/log/chprobe_bbk.log"
+echo "Running tests, look for messages/errors in journal or in your logdir. The test result is saved at /var/log/chprobe_iperf3tcp.log"
 
 # Make sure no other test of relevance is running and that our zone is clear before going further
 if [ $bbk_remotestatus -eq 1 ] || [ $localstatus -ge 1 ]; then
