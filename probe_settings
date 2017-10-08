@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 2.7.5
+# Version 2.7.6
 
 # Load config file
 chprobe_configfile="/var/chprobe/$(hostname -d).cfg"
@@ -50,6 +50,7 @@ check_vars $dig_interval 2 60
 	if [ $chprobe_iperf3tcp = "enable" ]; then
 check_vars $iperf3tcp_ds_interval 2 60
 check_vars $iperf3tcp_us_interval 2 60
+check_vars $chrobe_iperf3tcp_sessions 1 30
 	fi
 
 	if [ $chprobe_iperf3udp = "enable" ]; then
