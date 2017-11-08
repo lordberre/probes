@@ -108,3 +108,5 @@ current_version="0.96.20"
 2. Fixes to probe_settings
 3. Added more ports to iperf3 udp tests
 4. Improvements to iperf3 tcp scripts related to configuration using arguments or probe-wide config
+
+# v0.96.21

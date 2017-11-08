@@ -17,9 +17,11 @@ forced_server=false
 # For global zone, if you want something else than hostname, then edit below
 probename="$(hostname -d)"
 
-# Use this amount TCP sessions in case the config file fails to load
-# Default: 15
+# Variables to load in case the config file is skipped or fails to load
+# Default sessions: 15 sessions
+# Default duration: 12 sec
 chprobe_iperf3tcp_sessions=15
+chprobe_iperf3tcp_duration=12
 
 # Probe timer (default 5 sec) Note: This will be owerwritten if global zone is used
 probetimer=5
@@ -176,12 +178,12 @@ remotelocal_loop
 
 if [ $direction = "upstream" ]; then logtag=chprobe_iperf3tcp_us[$(echo $count)]
 tcpdaemon () {
-/usr/bin/iperf3 --client $target -4 -P $chprobe_iperf3tcp_sessions -t 12 -O 2 | egrep 'SUM.*receiver|SUM.*sender|busy' | awk '{print $6,$8}' | tr -d ':|receiver' | xargs | sed -e "s/^/$direction /" | logger -t iperf3tcp[$(echo $count)] -p $logfacility
+/usr/bin/iperf3 --client $target -4 -P $chprobe_iperf3tcp_sessions -t $chprobe_iperf3tcp_duration -O 2 | egrep 'SUM.*receiver|SUM.*sender|busy' | awk '{print $6,$8}' | tr -d ':|receiver' | xargs | sed -e "s/^/$direction /" | logger -t iperf3tcp[$(echo $count)] -p $logfacility
 }
 
 elif [ $direction = "downstream" ]; then logtag=chprobe_iperf3tcp_ds[$(echo $count)]
 tcpdaemon () {
-/usr/bin/iperf3 --client $target -4 -R -P $chprobe_iperf3tcp_sessions -t 12 -O 2 | egrep 'SUM.*receiver|SUM.*sender|busy' | awk '{print $6,$8}' | tr -d ':|receiver' | xargs | sed -e "s/^/$direction /" | logger -t iperf3tcp[$(echo $count)] -p $logfacility
+/usr/bin/iperf3 --client $target -4 -R -P $chprobe_iperf3tcp_sessions -t $chprobe_iperf3tcp_duration -O 2 | egrep 'SUM.*receiver|SUM.*sender|busy' | awk '{print $6,$8}' | tr -d ':|receiver' | xargs | sed -e "s/^/$direction /" | logger -t iperf3tcp[$(echo $count)] -p $logfacility
 }
         else echo 'No direction specified, exiting.' && exit 1
 fi
