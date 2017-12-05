@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 0.61 (IPv6 support)
+# Version 0.62 (DNS timeout parse)
 count=$(( ( RANDOM % 9999 )  + 100 ))
 logfacility="multi_chprobe[$(echo $count)]"
 
@@ -44,8 +44,16 @@ ip_version=$3
 if [ $ip_version = "4" ]; then dnstag=dns;elif [ $ip_version = "6" ]; then dnstag=dns_v6;fi # For tagging the log
 dns=$1
 domain=$2
+dig_syslogparse () {
+sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname) chprobe_$dnstag[$(echo $count)]: $dns $domain /"
+}
 for z in {1..5};do
- for x in {TXT,MX,A,CNAME,AAAA};do /usr/bin/dig -$ip_version @$dns $domain $x && sleep 1;done | grep time | xargs | tr -d 'Query|time|msec|;;|:' | tr -s ' ' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_$dnstag[$(echo $count)]: $dns $domain/" >>/var/log/chprobe_dns.log
+ dig_result=`for x in {TXT,MX,A,CNAME,AAAA};do /usr/bin/dig -$ip_version @$dns $domain $x && sleep 1;done | grep time | xargs | tr -d 'Query|time|msec|;;|:' | tr -s ' '`
+if [ `echo $dig_result | egrep 'onnon|ahd' | wc -l ` -ge 1 ]
+ then echo "timeout 1" | dig_syslogparse >>/var/log/chprobe_dns.log
+else
+ echo $dig_result | dig_syslogparse | tr -s ' ' >>/var/log/chprobe_dns.log
+fi
 done
 ;;
                                 -h)  cat <<USAGE
