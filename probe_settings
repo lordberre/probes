@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 2.7.6
+# Version 2.7.7
 
 # Load config file
 chprobe_configfile="/var/chprobe/$(hostname -d).cfg"
@@ -52,6 +52,7 @@ check_vars $iperf3tcp_ds_interval 2 60
 check_vars $iperf3tcp_us_interval 2 60
 check_vars $chprobe_iperf3tcp_sessions 1 30
 check_vars $chprobe_iperf3tcp_duration 10 300
+check_vars $chprobe_iperf3tcp_omitduration 10 300
 	fi
 
 	if [ $chprobe_iperf3udp = "enable" ]; then
@@ -122,6 +123,10 @@ MAILTO=$cron_user
 # *  *  *  *  * user-name  command to be executed
 */$callhome_interval *  *  *  * $cron_user $probedir./callhome.sh &> /dev/null
 */5 *  *  *  * root bash /var/chprobe/./chprobe.sh > /etc/motd 2> /dev/null" > /etc/crontab
+
+if [ $ssh_tunnel = "enable" ]; then
+echo "0 5 * * * $cron_user systemctl restart sshtunnel &> /dev/null" >> /etc/crontab
+fi
 
 if [ $chprobe_iperf3udp = "enable" ]; then
 echo "*/$iperf3udp_us_interval  *  *  *  * $cron_user $probedir./udp_iperf3_client_merged.sh -us &> /dev/null

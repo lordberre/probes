@@ -112,3 +112,4 @@ current_version="0.96.20"
 # v0.96.21
 1. Added more iperf3 vars
 2. DNS query timeouts are now parsed
+3. Improvements to sshtunnels
