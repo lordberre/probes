@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 2.44.0 (offline mode support and revert: busy_retryv2, revert temp retry, busyloop)
+# Version 2.45.0 (added udp support for high throughput use cases. IP targets are shared with tcp tests for coexist purposes)
 # select-server fix for when global zone is disabled, changed dir temp files.
 # Note: Some variables are named "bbk"-something since we're using the same zone functionallity
 
@@ -20,9 +20,9 @@ probename="$(hostname -d)"
 # Variables to load in case the config file is skipped or fails to load
 # Default sessions: 15 sessions
 # Default duration: 12 sec
-chprobe_iperf3tcp_sessions=15
-chprobe_iperf3tcp_duration=12
-chprobe_iperf3tcp_omitduration=2
+declare -i chprobe_iperf3tcp_sessions=15
+declare -i chprobe_iperf3tcp_duration=12
+declare -i chprobe_iperf3tcp_omitduration=2
 
 # Probe timer (default 5 sec) Note: This will be owerwritten if global zone is used
 probetimer=5
@@ -30,11 +30,19 @@ probetimer=5
 # File used for storing target ip regardless of source (configuration or url)
 cachefile="/var/chprobe/ip_tcp.txt"
 
+# Standard protocol
+protocol=tcp
+
+# UDP high speed default settings
+declare -i udp_bandwidth=50
+declare -i chprobe_iperf3udp_sessions=2
+declare -i chprobe_iperf3udp_length=60
+
 # Ridrect flag
 REDIRECT="/dev/null"
 
 # Logdir
-iperf3log="/var/log/iperf3tcp.log"
+iperf3log="/var/log/iperf3udp.log"
 
 # Should the script continue even if remote server is inresponsive? Default is true
 force_start=true
@@ -103,17 +111,21 @@ How to use: $0 -4 or -6 must be specified.
     -g) Use remote global collision zone for the probe. (Use this if you've configured the zone on your remote server)
     -s) Skip loading configuration file (use only if you've got issues)
     -f) Force the server target (implies '-s'), must be used with server ip/hostname as argument, e.g: ./iperf3script -f x.x.x.x
+    -p) Use udp protocol rather than tcp
+    -b) Set bandwidth (udp only) - Input must be an INTEGER and in mbit/s (default is 100mbit)
 Note: When using zones, your test might not start immediately
 Example: $ ./iperf3script -d -4 -z 1
 USAGE
  }
 
-options=':z:f:46duhgs'
+options=':z:f:b:46duhgsp'
 while getopts $options option
 do
     case $option in
         z  ) zone=${OPTARG}     ;;
         g  ) zone=z	  	;;
+        p  ) protocol=udp       ;;
+        b  ) bandwidth=${OPTARG};udp_bandwidth=`expr $bandwidth / $chprobe_iperf3udp_sessions`       ;;
         4  ) ip_version=4 	;;
 	6  ) ip_version=6 && echo 'Not implemented yet' && exit 0 	;;
         d  ) direction=downstream       ;;
@@ -177,27 +189,45 @@ done
 remotelocal_loop
 }
 
-if [ $direction = "upstream" ]; then logtag=chprobe_iperf3tcp_us[$(echo $count)]
-tcpdaemon () {
-/usr/bin/iperf3 --client $target -4 -P $chprobe_iperf3tcp_sessions -t $chprobe_iperf3tcp_duration -O $chprobe_iperf3tcp_omitduration | egrep 'SUM.*receiver|SUM.*sender|busy' | awk '{print $6,$8}' | tr -d ':|receiver' | xargs | sed -e "s/^/$direction /" | logger -t iperf3tcp[$(echo $count)] -p $logfacility
-}
 
-elif [ $direction = "downstream" ]; then logtag=chprobe_iperf3tcp_ds[$(echo $count)]
-tcpdaemon () {
-/usr/bin/iperf3 --client $target -4 -R -P $chprobe_iperf3tcp_sessions -t $chprobe_iperf3tcp_duration -O $chprobe_iperf3tcp_omitduration | egrep 'SUM.*receiver|SUM.*sender|busy' | awk '{print $6,$8}' | tr -d ':|receiver' | xargs | sed -e "s/^/$direction /" | logger -t iperf3tcp[$(echo $count)] -p $logfacility
-}
+# Protocol
+
+if [ $protocol = tcp ];then
+ if [ $direction = "upstream" ]; then logtag=chprobe_iperf3tcp_us[$(echo $count)]
+ iperf_daemon () {
+ /usr/bin/iperf3 --client $target -4 -P $chprobe_iperf3tcp_sessions -t $chprobe_iperf3tcp_duration -O $chprobe_iperf3tcp_omitduration | egrep 'SUM.*receiver|SUM.*sender|busy' | awk '{print $6,$8}' | tr -d ':|receiver' | xargs | sed -e "s/^/$direction /" | logger -t iperf3tcp[$(echo $count)] -p $logfacility
+ }
+
+ elif [ $direction = "downstream" ]; then logtag=chprobe_iperf3tcp_ds[$(echo $count)]
+ iperf_daemon () {
+ /usr/bin/iperf3 --client $target -4 -R -P $chprobe_iperf3tcp_sessions -t $chprobe_iperf3tcp_duration -O $chprobe_iperf3tcp_omitduration | egrep 'SUM.*receiver|SUM.*sender|busy' | awk '{print $6,$8}' | tr -d ':|receiver' | xargs | sed -e "s/^/$direction /" | logger -t iperf3tcp[$(echo $count)] -p $logfacility
+ }
+ fi
+
+elif [ $protocol = udp ];then logfacility=local4.debug 
+
+ if [ $direction = "upstream" ]; then logtag=chprobe_iperf3highudp_us[$(echo $count)]
+ iperf_daemon () {
+ /usr/bin/iperf3 --client $target -4 -u -T $direction -b ${udp_bandwidth}m -P $chprobe_iperf3udp_sessions -t $chprobe_iperf3udp_length | egrep 'iperf Done|iperf3: error' -B 3 | egrep "0.00-${chprobe_iperf3udp_length}.00|busy" | grep -v sender | awk '{print $1,$5,$7,$9,$12,$14}' | tr -d '(%)|:' | logger -t iperf3udp[$(echo $count)] -p $logfacility
+ }
+
+ elif [ $direction = "downstream" ]; then logtag=chprobe_iperf3highudp_ds[$(echo $count)]
+ iperf_daemon () {
+ /usr/bin/iperf3 --client $target -4 -u -T $direction -b ${udp_bandwidth}m -R -P $chprobe_iperf3udp_sessions -t $chprobe_iperf3udp_length | egrep 'iperf Done|iperf3: error' -B 3 | egrep "0.00-${chprobe_iperf3udp_length}.00|busy" | grep -v sender | awk '{print $1,$5,$7,$9,$12,$14}' | tr -d '(%)|:' | logger -t iperf3udp[$(echo $count)] -p $logfacility
+ }
         else echo 'No direction specified, exiting.' && exit 1
+ fi
 fi
 
 # Make sure that the test is performed and not "skipped" due to the server becoming busy after we exited the first busy loop
 busy_failcheck () {
-checkbusy="$(tail -1 $iperf3log | grep $count | grep busy | wc -l)"
+checkbusy="$(tail -1 $iperf3log | grep $count | grep later | wc -l)"
 busyfail=0
 while [ $checkbusy -eq 1 ]; do
 echo "[$logtag] Everything seemed ok but we didn't run any test, looping until server is not busy ($busyfail)" | logger -p info && 
 sleep $[ ( $RANDOM % 20 ) + 11]s && 
-tcpdaemon
-checkbusy="$(tail -1 $iperf3log | grep $count | grep busy | wc -l)"
+iperf_daemon
+checkbusy="$(tail -1 $iperf3log | grep $count | grep later | wc -l)"
 
 # Anti fail
 busyfail=$(( $busyfail + 1 ))
@@ -275,23 +305,23 @@ while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 30 ];do kill $(pgrep -f "ipe
 # Call the remote loop
 remotelocal_loop
 
-# We check the status of the iperf3 server and again if another tcp test is running 
+# We check the status of the iperf3 server and again if another test is running 
 case "$(pgrep -f "iperf3 --client" | wc -w)" in
 
-0)  echo "[$logtag] Let's see if we can start the tcp daemon" | logger -p info
+0)  echo "[$logtag] Let's see if we can start the daemon" | logger -p info
     serverbusy_loop
     echo "[$logtag] Starting $logtag [debug: $localstatus | $(pgrep -f 'bbk_cli|iperf3 --client' | wc -l)]" | logger -p notice
-    setzone 1; tcpdaemon;busy_failcheck && echo "[$logtag] tcp daemon finished" | logger -p info &&
+    setzone 1; iperf_daemon;busy_failcheck && echo "[$logtag] daemon finished" | logger -p info &&
         if [ $iwdetect -gt 0 ] 2> $REDIRECT; then
             if [ $wififreq -lt 2500 ] 2> $REDIRECT; then phy=ht && eval $htparse;else
                     if [ $phydetect -ge 1 ] 2> $REDIRECT; then phy=vht && eval $vhtparse;else phy=ht eval $htparse;fi;fi
             else echo 'No WiFi NIC detected'>/dev/stdout;fi
 ;;
-1)  echo "[$logtag] iperf tcp daemon is already running" | logger -p info
+1)  echo "[$logtag] iperf daemon is already running" | logger -p info
           while [ `pgrep -f 'iperf3 --client|bbk_cli|wrk' | wc -w` -ge 1 ];do remotelocal_loop; sleep $[ ( $RANDOM % $probetimer ) + 3]s; remotelocal_loop && echo "[$logtag] waiting cuz either an iperf3 or a bbk daemon is running" | logger -p info;done
 	    serverbusy_loop
     echo "[$logtag] Starting $logtag [debug: $localstatus | $(pgrep -f 'bbk_cli|iperf3 --client' | wc -l)]" | logger -p notice
-    setzone 1; tcpdaemon;busy_failcheck && echo "[$logtag] tcp daemon finished" | logger -p info
+    setzone 1; iperf_daemon;busy_failcheck && echo "[$logtag] daemon finished" | logger -p info
         if [ $iwdetect -gt 0 ] 2> $REDIRECT; then
             if [ $wififreq -lt 2500 ] 2> $REDIRECT; then phy=ht && eval $htparse;else
                     if [ $phydetect -ge 1 ] 2> $REDIRECT; then phy=vht && eval $vhtparse;else phy=ht eval $htparse;fi;fi
@@ -315,7 +345,7 @@ then reinit_status; bs=$(eval $bbk_remotestatusv2)
 fi
 
 # Informational message
-echo "Running tests, look for messages/errors in journal or in your logdir. The test result is saved at /var/log/chprobe_iperf3tcp.log"
+echo "Running tests, look for messages/errors in journal or in your logdir. The test result is saved at /var/log/chprobe_iperf3\${PROTOCOL}.log"
 
 # Make sure no other test of relevance is running and that our zone is clear before going further
 if [ $bbk_remotestatus -eq 1 ] || [ $localstatus -ge 1 ]; then
