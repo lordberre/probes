@@ -34,9 +34,10 @@ cachefile="/var/chprobe/ip_tcp.txt"
 protocol=tcp
 
 # UDP high speed default settings
-declare -i udp_bandwidth=50
+declare -i chprobe_iperf3udp_bandwidth=50
 declare -i chprobe_iperf3udp_sessions=2
 declare -i chprobe_iperf3udp_length=60
+udp_bandwidth=`expr $chprobe_iperf3udp_bandwidth / $chprobe_iperf3udp_sessions`
 
 # Ridrect flag
 REDIRECT="/dev/null"
@@ -151,6 +152,9 @@ count=$(( ( RANDOM % 9999 )  + 1 ))
 if [ $skip_configfile = "false" ]; then
 source /var/chprobe/$(hostname -d).cfg || skip_configfile=true
 
+# If UDP, match udp bandwidth against amount of sessions
+udp_bandwidth=`expr $chprobe_iperf3udp_bandwidth / $chprobe_iperf3udp_sessions` 2> /dev/null
+
 # Also update the cache file, in case the script was run with '-s' or '-f' in between configuration commits
 echo $chprobe_iperf3tcp_target > $cachefile
 fi
@@ -204,16 +208,16 @@ if [ $protocol = tcp ];then
  }
  fi
 
-elif [ $protocol = udp ];then logfacility=local4.debug 
+elif [ $protocol = udp ];then logfacility=local4.debug
 
  if [ $direction = "upstream" ]; then logtag=chprobe_iperf3highudp_us[$(echo $count)]
  iperf_daemon () {
- /usr/bin/iperf3 --client $target -4 -u -T $direction -b ${udp_bandwidth}m -P $chprobe_iperf3udp_sessions -t $chprobe_iperf3udp_length | egrep 'iperf Done|iperf3: error' -B 3 | egrep "0.00-${chprobe_iperf3udp_length}.00|busy" | grep -v sender | awk '{print $1,$5,$7,$9,$12,$14}' | tr -d '(%)|:' | logger -t iperf3udp[$(echo $count)] -p $logfacility
+ /usr/bin/iperf3 --client $target -4 -u -T $direction -b ${udp_bandwidth}m -P $chprobe_iperf3udp_sessions -t $chprobe_iperf3udp_length | egrep 'iperf Done|iperf3: error' -B 3 | egrep "0.00-${chprobe_iperf3udp_length}.00|busy" | grep -v sender | awk '{print $1,$5,$7,$9,$12,$14}' | tr -d '(%)|:' | logger -t iperf3highudp[$(echo $count)] -p $logfacility
  }
 
  elif [ $direction = "downstream" ]; then logtag=chprobe_iperf3highudp_ds[$(echo $count)]
  iperf_daemon () {
- /usr/bin/iperf3 --client $target -4 -u -T $direction -b ${udp_bandwidth}m -R -P $chprobe_iperf3udp_sessions -t $chprobe_iperf3udp_length | egrep 'iperf Done|iperf3: error' -B 3 | egrep "0.00-${chprobe_iperf3udp_length}.00|busy" | grep -v sender | awk '{print $1,$5,$7,$9,$12,$14}' | tr -d '(%)|:' | logger -t iperf3udp[$(echo $count)] -p $logfacility
+ /usr/bin/iperf3 --client $target -4 -u -T $direction -b ${udp_bandwidth}m -R -P $chprobe_iperf3udp_sessions -t $chprobe_iperf3udp_length | egrep 'iperf Done|iperf3: error' -B 3 | egrep "0.00-${chprobe_iperf3udp_length}.00|busy" | grep -v sender | awk '{print $1,$5,$7,$9,$12,$14}' | tr -d '(%)|:' | logger -t iperf3highudp[$(echo $count)] -p $logfacility
  }
         else echo 'No direction specified, exiting.' && exit 1
  fi

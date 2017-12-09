@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 2.7.7
+# Version 2.7.8
 
 # Load config file
 chprobe_configfile="/var/chprobe/$(hostname -d).cfg"
@@ -52,12 +52,19 @@ check_vars $iperf3tcp_ds_interval 2 60
 check_vars $iperf3tcp_us_interval 2 60
 check_vars $chprobe_iperf3tcp_sessions 1 30
 check_vars $chprobe_iperf3tcp_duration 10 300
-check_vars $chprobe_iperf3tcp_omitduration 10 300
+check_vars $chprobe_iperf3tcp_omitduration 2 300
 	fi
 
 	if [ $chprobe_iperf3udp = "enable" ]; then
 check_vars $iperf3udp_ds_interval 2 60
 check_vars $iperf3udp_us_interval 2 60
+	fi
+	if [ $chprobe_iperf3highudp = "enable" ]; then
+check_vars $iperf3highudp_ds_interval 2 60
+check_vars $iperf3highudp_us_interval 2 60
+check_vars $chprobe_iperf3udp_sessions 1 30
+check_vars $chprobe_iperf3udp_length 10 300
+check_vars $chprobe_iperf3udp_bandwidth 1 10000
 	fi
 
 	if [ $chprobe_bbk = "enable" ]; then
@@ -132,6 +139,12 @@ if [ $chprobe_iperf3udp = "enable" ]; then
 echo "*/$iperf3udp_us_interval  *  *  *  * $cron_user $probedir./udp_iperf3_client_merged.sh -us &> /dev/null
 */$iperf3udp_ds_interval  *  *  *  * $cron_user $probedir./udp_iperf3_client_merged.sh -ds &> /dev/null" >> /etc/crontab
 	else echo "iperf3 udp tests disabled - ($chprobe_iperf3udp)"
+fi
+
+if [ $chprobe_iperf3highudp = "enable" ]; then
+echo "*/$iperf3highudp_us_interval  *  *  *  * $cron_user $probedir./tcp_iperf3_clientv3.sh -g -u -4 -p &> /dev/null # High-speed UDP
+*/$iperf3highudp_ds_interval  *  *  *  * $cron_user $probedir./tcp_iperf3_clientv3.sh -g -d -4 -p &> /dev/null # High-speed UDP" >> /etc/crontab
+        else echo "iperf3 udp tests disabled - ($chprobe_iperf3udp)"
 fi
 
 if [ $chprobe_iperf3tcp = "enable" ]; then
