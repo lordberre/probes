@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 1.45.3. Changed dir for temp files. Remove sender in output for iperf3.2+ versions. Added two more ports.
+# Version 1.46.0. Fix for when ip file is empty.
 
 while true
 do
@@ -32,7 +32,12 @@ urlcheck=$(eval $urlz)
 
 # Use cached ip if remote server is not responding
 if [ $urlcheck -ne 200 ]; then target="$(cat /var/chprobe/ip-udp.txt)"
-        else target="$(curl -m 3 -s $ip_url)" && curl -m 3 -s -o /var/chprobe/ip-udp.txt $ip_url
+        else target="$(curl -m 3 -s $ip_url)"
+fi
+
+# Check if the target file actually contains any data.. If yes, save it in cache and use it.
+if [ -z $target ]; then target="$(cat /var/chprobe/ip-udp.txt)" # Otherwise just use cache file
+ else curl -m 3 -s -o /var/chprobe/ip-udp.txt $ip_url
 fi
 
 # Daemon settings

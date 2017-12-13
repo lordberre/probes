@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 2.45.0 (added udp support for high throughput use cases. IP targets are shared with tcp tests for coexist purposes)
+# Version 2.45.2 (added udp support for high throughput use cases. IP targets are shared with tcp tests for coexist purposes) + fixed tankevurpa
 # select-server fix for when global zone is disabled, changed dir temp files.
 # Note: Some variables are named "bbk"-something since we're using the same zone functionallity
 
@@ -41,9 +41,6 @@ udp_bandwidth=`expr $chprobe_iperf3udp_bandwidth / $chprobe_iperf3udp_sessions`
 
 # Ridrect flag
 REDIRECT="/dev/null"
-
-# Logdir
-iperf3log="/var/log/iperf3udp.log"
 
 # Should the script continue even if remote server is inresponsive? Default is true
 force_start=true
@@ -152,11 +149,19 @@ count=$(( ( RANDOM % 9999 )  + 1 ))
 if [ $skip_configfile = "false" ]; then
 source /var/chprobe/$(hostname -d).cfg || skip_configfile=true
 
+if [ $protocol = udp ];then
 # If UDP, match udp bandwidth against amount of sessions
 udp_bandwidth=`expr $chprobe_iperf3udp_bandwidth / $chprobe_iperf3udp_sessions` 2> /dev/null
 
+# If UDP, change logdir
+iperf3log="/var/log/iperf3udp.log"
+else iperf3log="/var/log/iperf3tcp.log"
+fi
+
 # Also update the cache file, in case the script was run with '-s' or '-f' in between configuration commits
-echo $chprobe_iperf3tcp_target > $cachefile
+ if [ $chprobe_iperf3tcp_target != "disable" ]; then
+ echo $chprobe_iperf3tcp_target > $cachefile
+ fi
 fi
 
 if [ $chprobe_iperf3tcp_target = "disable" ] 2> $REDIRECT; then
@@ -225,13 +230,13 @@ fi
 
 # Make sure that the test is performed and not "skipped" due to the server becoming busy after we exited the first busy loop
 busy_failcheck () {
-checkbusy="$(tail -1 $iperf3log | grep $count | grep later | wc -l)"
+checkbusy="$(tail -1 $iperf3log | grep $count | grep 'busy|later' | wc -l)"
 busyfail=0
 while [ $checkbusy -eq 1 ]; do
 echo "[$logtag] Everything seemed ok but we didn't run any test, looping until server is not busy ($busyfail)" | logger -p info && 
 sleep $[ ( $RANDOM % 20 ) + 11]s && 
 iperf_daemon
-checkbusy="$(tail -1 $iperf3log | grep $count | grep later | wc -l)"
+checkbusy="$(tail -1 $iperf3log | grep $count | grep 'busy|later' | wc -l)"
 
 # Anti fail
 busyfail=$(( $busyfail + 1 ))
@@ -281,8 +286,12 @@ if [ $chprobe_iperf3tcp_target = "disable" ] 2> $REDIRECT; then
 	curl -m 3 --retry 2 -s -o /var/chprobe/probe_timer.txt $ip_url
 
 # Also use zone specific server
- 	remoteurl_vars zone$zone-server && target="$(curl -m 3 --retry 2 -s $ip_url)" &&
-	curl -m 3 --retry 2 -s -o /var/chprobe/ip_tcp.txt $ip_url
+ 	remoteurl_vars zone$zone-server && target="$(curl -m 3 --retry 2 -s $ip_url)"
+
+# Check if the target file actually contains any data.. If yes, save it in cache and use it.
+if [ -z $target ]; then target="$(cat /var/chprobe/ip_tcp.txt)" # Otherwise just use cache file
+ else curl -m 3 --retry 2 -s -o $cachefile $ip_url
+fi
 	fi
 	fi
 elif [ $forced_server = "true" ]; then target=$chprobe_iperf3tcp_target
