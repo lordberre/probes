@@ -230,13 +230,13 @@ fi
 
 # Make sure that the test is performed and not "skipped" due to the server becoming busy after we exited the first busy loop
 busy_failcheck () {
-checkbusy="$(tail -1 $iperf3log | grep $count | grep 'busy|later' | wc -l)"
+checkbusy="$(tail -1 $iperf3log | grep $count | egrep 'busy|later' | wc -l)"
 busyfail=0
 while [ $checkbusy -eq 1 ]; do
 echo "[$logtag] Everything seemed ok but we didn't run any test, looping until server is not busy ($busyfail)" | logger -p info && 
 sleep $[ ( $RANDOM % 20 ) + 11]s && 
 iperf_daemon
-checkbusy="$(tail -1 $iperf3log | grep $count | grep 'busy|later' | wc -l)"
+checkbusy="$(tail -1 $iperf3log | grep $count | egrep 'busy|later' | wc -l)"
 
 # Anti fail
 busyfail=$(( $busyfail + 1 ))
