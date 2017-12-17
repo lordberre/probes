@@ -110,7 +110,8 @@ current_version="0.96.20"
 4. Improvements to iperf3 tcp scripts related to configuration using arguments or probe-wide config
 
 # v0.96.21
-1. Added more iperf3 vars
+1. Added more iperf3 vars. Random UDP streams are now configurable
 2. DNS query timeouts are now parsed
 3. Improvements to sshtunnels
 4. Added iperf3 UDP high throughput tests
+5. Fixed upstream udp streams not being parsed since iperf 3.3+
