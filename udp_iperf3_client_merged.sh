@@ -1,5 +1,6 @@
 #!/bin/bash
-# Version 1.46.0. Fix for when ip file is empty.
+# Version 1.47.0. Added configuration file support for stream bandwidths and length
+# Also fix for iperf 3.3+ parse issue
 
 while true
 do
@@ -25,6 +26,17 @@ logfacility=local4.debug
 logtag=chprobe_iperf3udp
 count=$(( ( RANDOM % 9999 )  + 1 ))
 
+# Default settings
+declare -i chprobe_iperf3udp_stream_b1=5
+declare -i chprobe_iperf3udp_stream_b2=10
+declare -i chprobe_iperf3udp_stream_b3=20
+declare -i chprobe_iperf3udp_stream_t1=60
+declare -i chprobe_iperf3udp_stream_t2=60
+declare -i chprobe_iperf3udp_stream_t3=60
+
+# Load configuration file
+source /var/chprobe/$(hostname -d).cfg
+
 # Remote url stuff
 ip_url="http://project-mayhem.se/probes/ip-udp.txt"
 urlz="curl -m 3 -s -o /dev/null -w \"%{http_code}\" \$ip_url"
@@ -42,10 +54,10 @@ fi
 
 # Daemon settings
 if [ $direction = "upstream" ]; then
-udpdaemon="/usr/bin/iperf3 -u --client \$target -T \$direction -b \${arr[\$rand]} -t 60 -p \${portz[\$randport]} | egrep 'iperf Done' -B 3 | egrep 0.00-60.00 | grep -v sender | awk '{print \$1,\$6,\$8,\$10,\$13,\$14.\$15,\$16,\$17,\$18}' | tr -d '(%)|:' | logger -t iperf3udp[\$(echo \$count)] -p \$logfacility"
+udpdaemon="/usr/bin/iperf3 -u --client \$target -T \$direction -b \${arr[\$rand]}m -t \$DURATION -p \${portz[\$randport]} | egrep 'iperf Done' -B 3 | egrep 0.00-\$DURATION | grep -v sender | awk '{print \$1,\$6,\$8,\$10,\$13,\$14.\$15,\$16,\$17,\$18}' | tr -d '(%)|:' | logger -t iperf3udp[\$(echo \$count)] -p \$logfacility"
 
 elif [ $direction = "downstream" ]; then
-udpdaemon="/usr/bin/iperf3 -u --client \$target -T \$direction -R -b \${arr[\$rand]} -t 60 -p \${portz[\$randport]} | egrep 'iperf Done' -B 3 | egrep 0.00-60.00 | grep -v sender | awk '{print \$1,\$6,\$8,\$10,\$13,\$14.\$15,\$16,\$17,\$18}' | tr -d '(%)|:' | logger -t iperf3udp[\$(echo \$count)] -p \$logfacility"
+udpdaemon="/usr/bin/iperf3 -u --client \$target -T \$direction -R -b \${arr[\$rand]}m -t \$DURATION -p \${portz[\$randport]} | egrep 'iperf Done' -B 3 | egrep 0.00-\$DURATION | grep -v sender | awk '{print \$1,\$6,\$8,\$10,\$13,\$14.\$15,\$16,\$17,\$18}' | tr -d '(%)|:' | logger -t iperf3udp[\$(echo \$count)] -p \$logfacility"
 	else echo 'No direction specified, exiting.' && exit 1
 fi
 
@@ -65,9 +77,9 @@ vhtparse="iw \$iwnic station dump | egrep 'tx bitrate|signal:' | xargs | tr -d '
 ####
 
 # Randomize stream bandwidth.
-arr[0]="5m"
-arr[1]="10m"
-arr[2]="20m"
+arr[0]="$chprobe_iperf3udp_stream_b1"
+arr[1]="$chprobe_iperf3udp_stream_b2"
+arr[2]="$chprobe_iperf3udp_stream_b3"
 rand=$[ $RANDOM % 3 ]
 
 # Randomize ports to connect to.
@@ -79,9 +91,15 @@ portz[4]="5230"
 portz[5]="5235"
 randport=$[ $RANDOM % 6 ]
 
-# Only go into anti-collision loop if the bandwidth is 20m
-if [ ${arr[$rand]} == "20m" ]; then udp_anticollision=1
+# Only go into anti-collision loop if the bandwidth is 20 mbit or higher
+if [ ${arr[$rand]} -ge 20 ]; then udp_anticollision=1
 else udp_anticollision=0
+fi
+
+# Assign configured durations
+if [ ${arr[$rand]} -eq $chprobe_iperf3udp_stream_b1 ]; then DURATION=$chprobe_iperf3udp_stream_t1
+elif [ ${arr[$rand]} -eq $chprobe_iperf3udp_stream_b2 ]; then DURATION=$chprobe_iperf3udp_stream_t2
+elif [ ${arr[$rand]} -eq $chprobe_iperf3udp_stream_b3 ]; then DURATION=$chprobe_iperf3udp_stream_t3
 fi
 
 # Run tests and avoid collisions

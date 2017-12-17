@@ -48,28 +48,30 @@ check_vars $dig_interval 2 60
 	fi
 
 	if [ $chprobe_iperf3tcp = "enable" ]; then
-check_vars $iperf3tcp_ds_interval 2 60
-check_vars $iperf3tcp_us_interval 2 60
+check_vars $iperf3tcp_ds_interval 0 60
+check_vars $iperf3tcp_us_interval 0 60
 check_vars $chprobe_iperf3tcp_sessions 1 30
 check_vars $chprobe_iperf3tcp_duration 10 300
 check_vars $chprobe_iperf3tcp_omitduration 2 300
 	fi
 
 	if [ $chprobe_iperf3udp = "enable" ]; then
-check_vars $iperf3udp_ds_interval 2 60
-check_vars $iperf3udp_us_interval 2 60
+check_vars $iperf3udp_ds_interval 0 60
+check_vars $iperf3udp_us_interval 0 60
+check_vars $chprobe_iperf3udp_stream_b1 1 300
+check_vars $chprobe_iperf3udp_stream_b2 1 300
+check_vars $chprobe_iperf3udp_stream_b3 1 300
+check_vars $chprobe_iperf3udp_stream_t1 1 600
+check_vars $chprobe_iperf3udp_stream_t2 1 600
+check_vars $chprobe_iperf3udp_stream_t3 1 600
+
 	fi
 	if [ $chprobe_iperf3highudp = "enable" ]; then
-check_vars $iperf3highudp_ds_interval 2 60
-check_vars $iperf3highudp_us_interval 2 60
+check_vars $iperf3highudp_ds_interval 0 60
+check_vars $iperf3highudp_us_interval 0 60
 check_vars $chprobe_iperf3udp_sessions 1 30
-check_vars $chprobe_iperf3udp_length 10 300
+check_vars $chprobe_iperf3udp_length 10 1800
 check_vars $chprobe_iperf3udp_bandwidth 1 10000
-	fi
-
-	if [ $chprobe_bbk = "enable" ]; then
-check_vars $iperf3udp_ds_interval 2 60
-check_vars $iperf3udp_us_interval 2 60
 	fi
 
 	if [ $chprobe_bbk = "enable" ] || [ $chprobe_bbk_ipv6 = "enable" ] || [ $chprobe_bbk_ipv6 = "auto" ]; then
