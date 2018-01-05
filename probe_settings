@@ -20,7 +20,7 @@ fi
 }
 
 # Check or override vars
-check_vars $callhome_interval 20 60
+check_vars $callhome_interval 1 60
 
 	if [ $chprobe_wrk = "enable" ]; then
 check_vars $wrk_interval 1 60
