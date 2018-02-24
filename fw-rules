@@ -1,4 +1,4 @@
-# Version 1.51
+# Version 1.52
 
 # basic
 iptables -P INPUT ACCEPT
@@ -22,7 +22,7 @@ iptables -A INPUT -s 83.248.145.173/32 -p tcp --dport 34521 -j ACCEPT
 iptables -A INPUT -s 83.255.229.1/24 -j ACCEPT
 iptables -A INPUT -s 94.137.97.98/32 -p tcp --dport 34521 -j ACCEPT
 iptables -A INPUT -s $(cat /var/ip-udp.txt) -p tcp --dport 34521 -j ACCEPT
-iptables -A INPUT -s 80.217.13.96/32 -j ACCEPT
+iptables -A INPUT -s 213.89.17.164/32 -j ACCEPT
 
 # Allow SSH from local subnets
 iptables -A INPUT -s 192.168.0.1/24 -p tcp --dport 34521 -j ACCEPT
