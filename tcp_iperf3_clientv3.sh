@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 2.45.3 (added udp support for high throughput use cases. IP targets are shared with tcp tests for coexist purposes) + fixed tankevurpa. Fixed parsing for udp and iperf 3.3+ + some other udp stuff
+# Version 2.46.0 (added udp support for high throughput use cases. IP targets are shared with tcp tests for coexist purposes) + fixed tankevurpa. Fixed parsing for udp and iperf 3.3+ + some other udp stuff
 # select-server fix for when global zone is disabled, changed dir temp files.
 # Note: Some variables are named "bbk"-something since we're using the same zone functionallity
 
@@ -138,6 +138,12 @@ shift $(($OPTIND - 1))
 
 if [ $ip_version = "x" ]; then echo "-4 or -6 must be specified, aborting" && exit 1
 fi
+
+# Kill excessive scripts stacking up which could happen for multiple reasons
+anti_overload () {
+while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 30 ];do kill $(pgrep -f "iperf3|bbk_cli|wrk" | awk '{print $1}') && echo "[$logtag] We're overloaded with daemons, killing everything" | logger -p local5.err ; done
+}
+anti_overload
 
 logfacility=local3.debug
 count=$(( ( RANDOM % 9999 )  + 1 ))
@@ -313,7 +319,7 @@ fi
 
 # Iperf daemon and condititions
 start_iperf3 () {
-while [ `pgrep -f 'bbk_cli|iperf3|wrk' | wc -w` -ge 30 ];do kill $(pgrep -f "iperf3|bbk_cli|wrk" | awk '{print $1}') && echo "[$logtag] We're overloaded with daemons, killing everything" | logger -p local5.err ; done
+anti_overload
 
 # Call the remote loop
 remotelocal_loop
@@ -327,7 +333,7 @@ case "$(pgrep -f "iperf3 --client" | wc -w)" in
     setzone 1; iperf_daemon;busy_failcheck && echo "[$logtag] daemon finished" | logger -p info &&
         if [ $iwdetect -gt 0 ] 2> $REDIRECT; then
             if [ $wififreq -lt 2500 ] 2> $REDIRECT; then phy=ht && eval $htparse;else
-                    if [ $phydetect -ge 1 ] 2> $REDIRECT; then phy=vht && eval $vhtparse;else phy=ht eval $htparse;fi;fi
+                    if [ $phydetect -ge 1 ] 2> $REDIRECT; then phy=vht && eval $vhtparse;else phy=ht && eval $htparse;fi;fi
             else echo 'No WiFi NIC detected'>/dev/stdout;fi
 ;;
 1)  echo "[$logtag] iperf daemon is already running" | logger -p info
@@ -337,7 +343,7 @@ case "$(pgrep -f "iperf3 --client" | wc -w)" in
     setzone 1; iperf_daemon;busy_failcheck && echo "[$logtag] daemon finished" | logger -p info
         if [ $iwdetect -gt 0 ] 2> $REDIRECT; then
             if [ $wififreq -lt 2500 ] 2> $REDIRECT; then phy=ht && eval $htparse;else
-                    if [ $phydetect -ge 1 ] 2> $REDIRECT; then phy=vht && eval $vhtparse;else phy=ht eval $htparse;fi;fi
+                    if [ $phydetect -ge 1 ] 2> $REDIRECT; then phy=vht && eval $vhtparse;else phy=ht && eval $htparse;fi;fi
             else echo 'No WiFi NIC detected'>/dev/stdout;fi
 ;;
 *)  echo "[$logtag] multiple instances of iperf3 daemon running. Stopping & restarting iperf:" | logger -p info
