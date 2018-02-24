@@ -115,8 +115,8 @@ case "$(pgrep -f "iperf3 --client" | wc -w)" in
     echo "[$logtag] udp daemon started - $direction" | logger -p info
 	eval $udpdaemon &
 	if [ $iwdetect -gt 0 ]; then
-            if [ $wififreq -lt 2500 ]; then phy=ht & eval $htparse;else
-                    if [ $phydetect -ge 1 ]; then phy=vht & eval $vhtparse;else phy=ht eval $htparse;fi;fi
+            if [ $wififreq -lt 2500 ]; then phy=ht && eval $htparse;else
+                    if [ $phydetect -ge 1 ]; then phy=vht && eval $vhtparse;else phy=ht && eval $htparse;fi;fi
             else echo 'No WiFi NIC detected'>/dev/stdout;fi    
 ;;
 1)  echo "[$logtag] iperf daemon already running" | logger -p info
@@ -124,8 +124,8 @@ case "$(pgrep -f "iperf3 --client" | wc -w)" in
 echo "[$logtag] udp daemon started - $direction" | logger -p info
 	        eval $udpdaemon &
     if [ $iwdetect -gt 0 ]; then
-            if [ $wififreq -lt 2500 ]; then phy=ht & eval $htparse;else
-                    if [ $phydetect -ge 1 ]; then phy=vht & eval $vhtparse;else phy=ht eval $htparse;fi;fi
+            if [ $wififreq -lt 2500 ]; then phy=ht && eval $htparse;else
+                    if [ $phydetect -ge 1 ]; then phy=vht && eval $vhtparse;else phy=ht && eval $htparse;fi;fi
             else echo 'No WiFi NIC detected'>/dev/stdout;fi	
 ;;
 *)  echo "[$logtag] multiple instances of iperf3 udp daemons currently running." | logger -p info
