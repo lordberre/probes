@@ -54,10 +54,10 @@ fi
 
 # Daemon settings
 if [ $direction = "upstream" ]; then
-udpdaemon="/usr/bin/iperf3 -u --client \$target -T \$direction -b \${arr[\$rand]}m -t \$DURATION -p \${portz[\$randport]} | egrep 'iperf Done' -B 3 | egrep 0.00-\$DURATION | grep -v sender | awk '{print \$1,\$6,\$8,\$10,\$13,\$14.\$15,\$16,\$17,\$18}' | tr -d '(%)|:' | logger -t iperf3udp[\$(echo \$count)] -p \$logfacility"
+udpdaemon="/usr/bin/iperf3 -u --client \$target -T \$direction -b \${arr[\$rand]}m -t \$DURATION -p \${portz[\$randport]} -f M | egrep 'iperf Done' -B 3 | egrep 0.00-\$DURATION | grep -v sender | awk '{print \$1,\$6,\$8,\$10,\$13,\$14.\$15,\$16,\$17,\$18}' | tr -d '(%)|:' | logger -t iperf3udp[\$(echo \$count)] -p \$logfacility"
 
 elif [ $direction = "downstream" ]; then
-udpdaemon="/usr/bin/iperf3 -u --client \$target -T \$direction -R -b \${arr[\$rand]}m -t \$DURATION -p \${portz[\$randport]} | egrep 'iperf Done' -B 3 | egrep 0.00-\$DURATION | grep -v sender | awk '{print \$1,\$6,\$8,\$10,\$13,\$14.\$15,\$16,\$17,\$18}' | tr -d '(%)|:' | logger -t iperf3udp[\$(echo \$count)] -p \$logfacility"
+udpdaemon="/usr/bin/iperf3 -u --client \$target -T \$direction -R -b \${arr[\$rand]}m -t \$DURATION -p \${portz[\$randport]} -f M | egrep 'iperf Done' -B 3 | egrep 0.00-\$DURATION | grep -v sender | awk '{print \$1,\$6,\$8,\$10,\$13,\$14.\$15,\$16,\$17,\$18}' | tr -d '(%)|:' | logger -t iperf3udp[\$(echo \$count)] -p \$logfacility"
 	else echo 'No direction specified, exiting.' && exit 1
 fi
 
