@@ -1,0 +1,34 @@
+#!/bin/bash
+# Script that restarts any hanged iperf3 server daemons
+
+declare -a IPERF3PORTS=(`netstat -lntup | grep iperf3 | awk '{print $4}' | sed "s/://g"`)
+
+for PORT in ${IPERF3PORTS[@]}; do
+  # Service name
+  IPERFSERVICE="iperf3@${PORT}.service"
+
+  # Only run freeze checks if service is active (well netstat could catch non systemd instances...)
+  if [ `systemctl is-active ${IPERFSERVICE}` == 'active' ]; then
+
+    # The daemon should always respond with "busy" or "connect" if its running properly
+    declare -i IPERFISRUNNING=$(iperf3 -c 127.0.0.1 -t 1 -b 1M -p ${PORT} | egrep -i 'busy|connect' | wc -l & sleep 2 && kill -9 %1)
+    declare -i IPERF_TRANSPORTFAIL=$(iperf3 -c 127.0.0.1 -t 1 -b 1M -p ${PORT} | egrep -i 'transport' | wc -l & sleep 2 && kill -9 %1)
+
+    if [ $IPERFISRUNNING -eq 0 ]; then
+      echo "No response from server. Restarting hanged iperf3 daemon ${IPERFSERVICE}." | logger -p error
+      systemctl restart ${IPERFSERVICE}
+    elif [ $IPERF_TRANSPORTFAIL -eq 1 ]; then
+    echo "No response from server. Restarting hanged iperf3 daemon (TRANSPORT FAIL) ${IPERFSERVICE}." | logger -p error
+    systemctl restart ${IPERFSERVICE}
+    else
+      # Check if the busy daemon has logs last 20 seconds, else restart it
+      declare -i LASTLOGEPOCH=`date +%s -d "$(systemctl status ${IPERFSERVICE} | tail -1 | cut -f 1,2,3 -d ' ')"`
+      declare -i CURRENTEPOCH=`date +%s`
+      declare -i SECONDSDIFF=${CURRENTEPOCH}-${LASTLOGEPOCH}
+      if [ ${SECONDSDIFF} -gt 20 ]; then
+        echo "No server log for ${SECONDSDIFF} seconds. Restarting hanged iperf3 daemon ${IPERFSERVICE}" | logger -p error
+        systemctl restart ${IPERFSERVICE}
+      fi
+    fi
+  fi
+done

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 2.7.8
+# Version 2.8.0
 
 # Load config file
 chprobe_configfile="/var/chprobe/$(hostname -d).cfg"
@@ -78,6 +78,10 @@ check_vars $chprobe_iperf3udp_bandwidth 1 10000
 check_vars $chprobe_bbk_interval 2 60
 check_vars $chprobe_bbk_interval_ipv6 2 60
 	fi
+        if [ $chprobe_iperf3_localserver = "enable" ]; then
+check_vars $chprobe_iperf3_serverport 1000 65535
+check_vars $chprobe_iperf3_croninterval 1 60
+        fi
 
 else echo "No commits detected."
 fi
@@ -135,6 +139,10 @@ MAILTO=$cron_user
 
 if [ $ssh_tunnel = "enable" ]; then
 echo "0 5 * * * $cron_user systemctl restart sshtunnel &> /dev/null" >> /etc/crontab
+fi
+
+if [ $chprobe_iperf3_localserver = "enable" ]; then
+echo "*/$chprobe_iperf3_croninterval * * * * $cron_user $probedir./iperf3_antifreeze &> /dev/null" >> /etc/crontab
 fi
 
 if [ $chprobe_iperf3udp = "enable" ]; then
@@ -338,6 +346,17 @@ if [ $ssh_tunnel = "enable" ]; then
 	if [ `systemctl is-active sshtunnel` != 'active' ]; then
 	systemctl start sshtunnel && systemctl enable sshtunnel
 	fi
+fi
+
+# If configured, enable the iperf3 server service
+if [ $chprobe_iperf3_localserver = "enable" ]; then
+ if [ -f /usr/lib/systemd/system/iperf3@.service ]; then
+
+        if [ `systemctl is-active iperf3@$chprobe_iperf3_serverport` != 'active' ]; then
+        systemctl start iperf3@$chprobe_iperf3_serverport && systemctl enable iperf3@$chprobe_iperf3_serverport
+        fi
+ fi
+ else echo "ERROR: No iperf3 systemd service was detected, can't start iperf3 server"
 fi
 
 # Check if iperf3 servers are manually configured and save target locally
