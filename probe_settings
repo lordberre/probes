@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 2.8.0
+declare -i probe_settings_version=2 # Version 2.8.0
 
 # Load config file
 chprobe_configfile="/var/chprobe/$(hostname -d).cfg"
@@ -11,6 +11,11 @@ fi
 
 # If configuration is commited, check all variables
 if [ $chprobe_commit = "true" ]; then
+
+# Check config version against this script
+if [ $chprobe_configversion -ne $probe_settings_version &> /dev/null ]; then
+echo "Error: Probe configuration file is out of date!" # && exit 1
+fi
 
 # Config Fail Check function
 check_vars () {
@@ -355,8 +360,8 @@ if [ $chprobe_iperf3_localserver = "enable" ]; then
         if [ `systemctl is-active iperf3@$chprobe_iperf3_serverport` != 'active' ]; then
         systemctl start iperf3@$chprobe_iperf3_serverport && systemctl enable iperf3@$chprobe_iperf3_serverport
         fi
- fi
  else echo "ERROR: No iperf3 systemd service was detected, can't start iperf3 server"
+ fi
 fi
 
 # Check if iperf3 servers are manually configured and save target locally
