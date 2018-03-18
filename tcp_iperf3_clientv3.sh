@@ -1,6 +1,7 @@
 #!/bin/bash
-# Version 2.46.0 (added udp support for high throughput use cases. IP targets are shared with tcp tests for coexist purposes) + fixed tankevurpa. Fixed parsing for udp and iperf 3.3+ + some other udp stuff
+# Version 2.47.0 (added udp support for high throughput use cases. IP targets are shared with tcp tests for coexist purposes) + fixed tankevurpa. Fixed parsing for udp and iperf 3.3+ + some other udp stuff
 # select-server fix for when global zone is disabled, changed dir temp files.
+# stdout redirect for arm arch and busyloop fixed (broken since iperf3 3.3+)
 # Note: Some variables are named "bbk"-something since we're using the same zone functionallity
 
 # Dont touch this
@@ -198,7 +199,7 @@ fi
 # Daemon settings
 
 serverbusy_loop () {
-while iperf3 -c $target -4 -t 1 | grep busy; do
+while iperf3 -c $target -4 -t 1 2> /dev/stdout | grep busy; do
 sleep $[ ( $RANDOM % $probetimer ) + 3]s && echo "[$logtag] waiting cuz server is busy" | logger -p info
 done
 remotelocal_loop
@@ -210,12 +211,12 @@ remotelocal_loop
 if [ $protocol = tcp ];then
  if [ $direction = "upstream" ]; then logtag=chprobe_iperf3tcp_us[$(echo $count)]
  iperf_daemon () {
- /usr/bin/iperf3 --client $target -4 -P $chprobe_iperf3tcp_sessions -t $chprobe_iperf3tcp_duration -O $chprobe_iperf3tcp_omitduration -f m | egrep 'SUM.*receiver|SUM.*sender|busy' | awk '{print $6,$8}' | tr -d ':|receiver' | xargs | sed -e "s/^/$direction /" | logger -t iperf3tcp[$(echo $count)] -p $logfacility
+ /usr/bin/iperf3 --client $target -4 -P $chprobe_iperf3tcp_sessions -t $chprobe_iperf3tcp_duration -O $chprobe_iperf3tcp_omitduration -f m 2> /dev/stdout | egrep 'SUM.*receiver|SUM.*sender|busy' | sed 's/\<receiver\>//g' | awk '{print $6,$8}' | xargs | sed -e "s/^/$direction /" | logger -t iperf3tcp[$(echo $count)] -p $logfacility
  }
 
  elif [ $direction = "downstream" ]; then logtag=chprobe_iperf3tcp_ds[$(echo $count)]
  iperf_daemon () {
- /usr/bin/iperf3 --client $target -4 -R -P $chprobe_iperf3tcp_sessions -t $chprobe_iperf3tcp_duration -O $chprobe_iperf3tcp_omitduration -f m | egrep 'SUM.*receiver|SUM.*sender|busy' | awk '{print $6,$8}' | tr -d ':|receiver' | xargs | sed -e "s/^/$direction /" | logger -t iperf3tcp[$(echo $count)] -p $logfacility
+ /usr/bin/iperf3 --client $target -4 -R -P $chprobe_iperf3tcp_sessions -t $chprobe_iperf3tcp_duration -O $chprobe_iperf3tcp_omitduration -f m 2> /dev/stdout | egrep 'SUM.*receiver|SUM.*sender|busy' | sed 's/\<receiver\>//g' | awk '{print $6,$8}' | xargs | sed -e "s/^/$direction /" | logger -t iperf3tcp[$(echo $count)] -p $logfacility
  }
  fi
 
@@ -223,12 +224,12 @@ elif [ $protocol = udp ];then logfacility=local4.debug
 
  if [ $direction = "upstream" ]; then logtag=chprobe_iperf3highudp_us[$(echo $count)]
  iperf_daemon () {
- /usr/bin/iperf3 --client $target -4 -u -T $direction -b ${udp_bandwidth}m -P $chprobe_iperf3udp_sessions -t $chprobe_iperf3udp_length -f m | egrep 'iperf Done|iperf3: error' -B 3 | egrep "0.00-${chprobe_iperf3udp_length}|busy" | grep -v sender | awk '{print $1,$5,$7,$9,$12,$14}' | tr -d '(%)|:' | logger -t iperf3highudp[$(echo $count)] -p $logfacility
+ /usr/bin/iperf3 --client $target -4 -u -T $direction -b ${udp_bandwidth}m -P $chprobe_iperf3udp_sessions -t $chprobe_iperf3udp_length -f m 2> /dev/stdout | egrep 'iperf Done|iperf3: error' -B 3 | egrep "0.00-${chprobe_iperf3udp_length}|busy" | grep -v sender | awk '{print $1,$5,$7,$9,$12,$14}' | tr -d '(%)|:' | logger -t iperf3highudp[$(echo $count)] -p $logfacility
  }
 
  elif [ $direction = "downstream" ]; then logtag=chprobe_iperf3highudp_ds[$(echo $count)]
  iperf_daemon () {
- /usr/bin/iperf3 --client $target -4 -u -T $direction -b ${udp_bandwidth}m -R -P $chprobe_iperf3udp_sessions -t $chprobe_iperf3udp_length -f m | egrep 'iperf Done|iperf3: error' -B 3 | egrep "0.00-${chprobe_iperf3udp_length}|busy" | grep -v sender | awk '{print $1,$5,$7,$9,$12,$14}' | tr -d '(%)|:' | logger -t iperf3highudp[$(echo $count)] -p $logfacility
+ /usr/bin/iperf3 --client $target -4 -u -T $direction -b ${udp_bandwidth}m -R -P $chprobe_iperf3udp_sessions -t $chprobe_iperf3udp_length -f m 2> /dev/stdout | egrep 'iperf Done|iperf3: error' -B 3 | egrep "0.00-${chprobe_iperf3udp_length}|busy" | grep -v sender | awk '{print $1,$5,$7,$9,$12,$14}' | tr -d '(%)|:' | logger -t iperf3highudp[$(echo $count)] -p $logfacility
  }
         else echo 'No direction specified, exiting.' && exit 1
  fi
@@ -236,13 +237,13 @@ fi
 
 # Make sure that the test is performed and not "skipped" due to the server becoming busy after we exited the first busy loop
 busy_failcheck () {
-checkbusy="$(tail -1 $iperf3log | grep $count | egrep 'busy|later' | wc -l)"
+checkbusy="$(tail -1 $iperf3log | grep $count | egrep 'busy|later|running' | wc -l)"
 busyfail=0
 while [ $checkbusy -eq 1 ]; do
 echo "[$logtag] Everything seemed ok but we didn't run any test, looping until server is not busy ($busyfail)" | logger -p info && 
 sleep $[ ( $RANDOM % 20 ) + 11]s && 
 iperf_daemon
-checkbusy="$(tail -1 $iperf3log | grep $count | egrep 'busy|later' | wc -l)"
+checkbusy="$(tail -1 $iperf3log | grep $count | egrep 'busy|later|running' | wc -l)"
 
 # Anti fail
 busyfail=$(( $busyfail + 1 ))
