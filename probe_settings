@@ -334,7 +334,7 @@ daily
 rotate 0
 size 1000
 }" > /etc/logrotate.d/chprobe
-/usr/bin/bash /etc/cron.daily/logrotate
+logrotate /etc/logrotate.d/chprobe
 fi
 
 sleep 1 &&
