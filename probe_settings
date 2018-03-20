@@ -1,5 +1,5 @@
 #!/bin/bash
-declare -i probe_settings_version=2 # Version 2.8.0
+declare -i probe_settings_version=3 # Version 3.1.0
 
 # Load config file
 chprobe_configfile="/var/chprobe/$(hostname -d).cfg"
@@ -52,9 +52,11 @@ check_vars $icmp3_packets 5 100
 check_vars $dig_interval 2 60
 	fi
 
-	if [ $chprobe_iperf3tcp = "enable" ]; then
+	if [ $chprobe_iperf3tcp = "enable" ] || [ $chprobe_iperf3tcp_ipv6 = "enable" ]; then
 check_vars $iperf3tcp_ds_interval 0 60
 check_vars $iperf3tcp_us_interval 0 60
+check_vars $iperf3tcp_ds_interval_ipv6 0 60
+check_vars $iperf3tcp_us_interval_ipv6 0 60
 check_vars $chprobe_iperf3tcp_sessions 1 30
 check_vars $chprobe_iperf3tcp_duration 10 300
 check_vars $chprobe_iperf3tcp_omitduration 2 300
@@ -79,7 +81,7 @@ check_vars $chprobe_iperf3udp_length 10 1800
 check_vars $chprobe_iperf3udp_bandwidth 1 10000
 	fi
 
-	if [ $chprobe_bbk = "enable" ] || [ $chprobe_bbk_ipv6 = "enable" ] || [ $chprobe_bbk_ipv6 = "auto" ]; then
+	if [ $chprobe_bbk = "enable" ] || [ $chprobe_bbk_ipv6 = "enable" ]; then
 check_vars $chprobe_bbk_interval 2 60
 check_vars $chprobe_bbk_interval_ipv6 2 60
 	fi
@@ -165,7 +167,15 @@ fi
 if [ $chprobe_iperf3tcp = "enable" ]; then
 echo "*/$iperf3tcp_us_interval *  *  *  * $cron_user $probedir./tcp_iperf3_clientv3.sh -g -u -4 &> /dev/null
 */$iperf3tcp_ds_interval *  *  *  * $cron_user $probedir./tcp_iperf3_clientv3.sh -g -d -4 &> /dev/null" >> /etc/crontab
-        else echo "iperf3 tcp tests disabled - ($chprobe_iperf3tcp)"
+        else echo "iperf3 ipv4 tcp tests disabled - ($chprobe_iperf3tcp)"
+fi
+
+if [ $ipmode = "dualstack" ]; then
+   if [ $chprobe_iperf3tcp_ipv6 = "enable" ]; then
+echo "*/$iperf3tcp_us_interval_ipv6 *  *  *  * $cron_user $probedir./tcp_iperf3_clientv3.sh -g -u -6 &> /dev/null
+*/$iperf3tcp_ds_interval_ipv6 *  *  *  * $cron_user $probedir./tcp_iperf3_clientv3.sh -g -d -6 &> /dev/null" >> /etc/crontab
+        else echo "iperf3 ipv6 tcp tests disabled - ($chprobe_iperf3tcp_ipv6)"
+  fi
 fi
 
 if [ $chprobe_probemanager = "enable" ]; then
@@ -187,7 +197,7 @@ echo "*/$chprobe_bbk_interval *  *  *  * $cron_user $probedir./bbk_chprobe -4 -g
 fi
 
 if [ $ipmode = "dualstack" ]; then
-	if [ $chprobe_bbk_ipv6 = "enable" ] || [ $chprobe_bbk_ipv6 = "auto" ]; then
+	if [ $chprobe_bbk_ipv6 = "enable" ]; then
 	echo "*/$chprobe_bbk_interval_ipv6 *  *  *  * $cron_user $probedir./bbk_chprobe -6 -g &> /dev/null" >> /etc/crontab
 	fi
 fi
@@ -377,6 +387,9 @@ if [ $chprobe_commit = "true" ]; then
 # systemctl restart sshtunnel
 echo "$(date) - Configuration commit for $(hostname -d)" >> /var/log/chprobe_commits.log
 fi
+
+# Copy interface init script to nm dispatcher
+cp "${probedir}30-chprobe" /etc/NetworkManager/dispatcher.d/
 
 # Remove commit status in configuration file
 chprobe_commit=false && sed -i 's@chprobe_commit=true@chprobe_commit=false@g' $chprobe_configfile
