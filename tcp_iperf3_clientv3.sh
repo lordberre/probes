@@ -1,7 +1,8 @@
 #!/bin/bash
-# Version 2.47.0 (added udp support for high throughput use cases. IP targets are shared with tcp tests for coexist purposes) + fixed tankevurpa. Fixed parsing for udp and iperf 3.3+ + some other udp stuff
+# Version 2.48.0 (added udp support for high throughput use cases. IP targets are shared with tcp tests for coexist purposes) + fixed tankevurpa. Fixed parsing for udp and iperf 3.3+ + some other udp stuff
 # select-server fix for when global zone is disabled, changed dir temp files.
 # stdout redirect for arm arch and busyloop fixed (broken since iperf3 3.3+)
+# Added IPv6 support
 # Note: Some variables are named "bbk"-something since we're using the same zone functionallity
 
 # Dont touch this
@@ -11,6 +12,7 @@ multivar=0
 skip_configfile=false
 forced_server=false
 forced_bandwidth=false
+ip_version=4
 
 # For global zone, if you want something else than hostname, then edit below
 probename="$(hostname -d)"
@@ -122,8 +124,8 @@ do
         g  ) zone=z	  	;;
         p  ) protocol=udp       ;;
         b  ) forced_bandwidth=true;bandwidth=${OPTARG};udp_bandwidth=`expr $bandwidth / $chprobe_iperf3udp_sessions`       ;;
-        4  ) ip_version=4 	;;
-	6  ) ip_version=6 && echo 'Not implemented yet' && exit 0 	;;
+        4  ) ip_version=4;ipversion_tag=ipv4 	;;
+	6  ) ip_version=6;ipversion_tag=ipv6	;;
         d  ) direction=downstream       ;;
         u  ) direction=upstream       ;;
         s  ) skip_configfile=true;chprobe_iperf3tcp_target=disable       ;;
@@ -205,31 +207,42 @@ done
 remotelocal_loop
 }
 
-
+# Create the logtag depending on ip version and/or protocol
+logtag () {
+if [ $protocol = tcp ];then logtag=chprobe_iperf3tcp_${1}_${2}[$(echo $count)]
+   if [ $ip_version -eq 4 ];then beats_tag=iperf3tcp[$(echo $count)]
+   elif [ $ip_version -eq 6 ];then beats_tag=iperf3tcp_ipv6[$(echo $count)]
+   fi
+elif [ $protocol = udp ];then logtag=chprobe_iperf3highudp_${1}_${2}[$(echo $count)]
+   if [ $ip_version -eq 4 ];then beats_tag=iperf3highudp[$(echo $count)]
+   elif [ $ip_version -eq 6 ];then beats_tag=iperf3highudp_ipv6[$(echo $count)]
+   fi
+fi
+}
 # Protocol
 
 if [ $protocol = tcp ];then
- if [ $direction = "upstream" ]; then logtag=chprobe_iperf3tcp_us[$(echo $count)]
+ if [ $direction = "upstream" ]; then logtag us $ipversion_tag
  iperf_daemon () {
- /usr/bin/iperf3 --client $target -4 -P $chprobe_iperf3tcp_sessions -t $chprobe_iperf3tcp_duration -O $chprobe_iperf3tcp_omitduration -f m 2> /dev/stdout | egrep 'SUM.*receiver|SUM.*sender|busy' | sed 's/\<receiver\>//g' | awk '{print $6,$8}' | xargs | sed -e "s/^/$direction /" | logger -t iperf3tcp[$(echo $count)] -p $logfacility
+ /usr/bin/iperf3 --client $target -$ip_version -P $chprobe_iperf3tcp_sessions -t $chprobe_iperf3tcp_duration -O $chprobe_iperf3tcp_omitduration -f m 2> /dev/stdout | egrep 'SUM.*receiver|SUM.*sender|busy' | sed 's/\<receiver\>//g' | awk '{print $6,$8}' | xargs | sed -e "s/^/$direction /" | logger -t $beats_tag -p $logfacility
  }
 
- elif [ $direction = "downstream" ]; then logtag=chprobe_iperf3tcp_ds[$(echo $count)]
+ elif [ $direction = "downstream" ]; then logtag ds $ipversion_tag
  iperf_daemon () {
- /usr/bin/iperf3 --client $target -4 -R -P $chprobe_iperf3tcp_sessions -t $chprobe_iperf3tcp_duration -O $chprobe_iperf3tcp_omitduration -f m 2> /dev/stdout | egrep 'SUM.*receiver|SUM.*sender|busy' | sed 's/\<receiver\>//g' | awk '{print $6,$8}' | xargs | sed -e "s/^/$direction /" | logger -t iperf3tcp[$(echo $count)] -p $logfacility
+ /usr/bin/iperf3 --client $target -$ip_version -R -P $chprobe_iperf3tcp_sessions -t $chprobe_iperf3tcp_duration -O $chprobe_iperf3tcp_omitduration -f m 2> /dev/stdout | egrep 'SUM.*receiver|SUM.*sender|busy' | sed 's/\<receiver\>//g' | awk '{print $6,$8}' | xargs | sed -e "s/^/$direction /" | logger -t $beats_tag -p $logfacility
  }
  fi
 
 elif [ $protocol = udp ];then logfacility=local4.debug
 
- if [ $direction = "upstream" ]; then logtag=chprobe_iperf3highudp_us[$(echo $count)]
+ if [ $direction = "upstream" ]; then logtag us $ipversion_tag
  iperf_daemon () {
- /usr/bin/iperf3 --client $target -4 -u -T $direction -b ${udp_bandwidth}m -P $chprobe_iperf3udp_sessions -t $chprobe_iperf3udp_length -f m 2> /dev/stdout | egrep 'iperf Done|iperf3: error' -B 3 | egrep "0.00-${chprobe_iperf3udp_length}|busy" | grep -v sender | awk '{print $1,$5,$7,$9,$12,$14}' | tr -d '(%)|:' | logger -t iperf3highudp[$(echo $count)] -p $logfacility
+ /usr/bin/iperf3 --client $target -$ip_version -u -T $direction -b ${udp_bandwidth}m -P $chprobe_iperf3udp_sessions -t $chprobe_iperf3udp_length -f m 2> /dev/stdout | egrep 'iperf Done|iperf3: error' -B 3 | egrep "0.00-${chprobe_iperf3udp_length}|busy" | grep -v sender | awk '{print $1,$5,$7,$9,$12,$14}' | tr -d '(%)|:' | logger -t $beats_tag -p $logfacility
  }
 
- elif [ $direction = "downstream" ]; then logtag=chprobe_iperf3highudp_ds[$(echo $count)]
+ elif [ $direction = "downstream" ]; then logtag ds $ipversion_tag
  iperf_daemon () {
- /usr/bin/iperf3 --client $target -4 -u -T $direction -b ${udp_bandwidth}m -R -P $chprobe_iperf3udp_sessions -t $chprobe_iperf3udp_length -f m 2> /dev/stdout | egrep 'iperf Done|iperf3: error' -B 3 | egrep "0.00-${chprobe_iperf3udp_length}|busy" | grep -v sender | awk '{print $1,$5,$7,$9,$12,$14}' | tr -d '(%)|:' | logger -t iperf3highudp[$(echo $count)] -p $logfacility
+ /usr/bin/iperf3 --client $target -$ip_version -u -T $direction -b ${udp_bandwidth}m -R -P $chprobe_iperf3udp_sessions -t $chprobe_iperf3udp_length -f m 2> /dev/stdout | egrep 'iperf Done|iperf3: error' -B 3 | egrep "0.00-${chprobe_iperf3udp_length}|busy" | grep -v sender | awk '{print $1,$5,$7,$9,$12,$14}' | tr -d '(%)|:' | logger -t $beats_tag -p $logfacility
  }
         else echo 'No direction specified, exiting.' && exit 1
  fi
