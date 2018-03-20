@@ -4,14 +4,14 @@
 probeurl=http://project-mayhem.se/files/chprobe_latest_$(hostname -d).tgz
 probedefaults=http://project-mayhem.se/files/chprobe_latest_general.tgz
 probedir=/home/chprobe
-managerurl=http://project-mayhem.se/files/probemanagerv2
-configurl=http://project-mayhem.se/probes/chprobe_cfg/$(hostname -d).cfg
+managerurl=http://project-mayhem.se/files/probemanager
+# configurl=http://project-mayhem.se/probes/chprobe_cfg/$(hostname -d).cfg # Disabled
 global_configurl=http://project-mayhem.se/probes/chprobe_cfg/global.cfg
 probename="$(hostname -d)"
 
 case "$1" in
   installation)
-  yum install -y  wget iperf iperf3 &&
+#  yum install -y  wget &&
   echo 'Updating Manager'
   pushd $probedir/
   rm -f $probedir/probemanager*;sleep 1 && wget --no-cache $managerurl -P $probedir/ &&
@@ -33,13 +33,12 @@ case "$1" in
   chmod +x $probedir/bbk_chprobe
   echo "Backing up rc.local"
   cp /etc/rc.d/rc.local /etc/rc.d/rc.local.bak
+  mkdir /root/backups
   sleep 1
   echo "Done"
   sleep 1 &&
   /bin/bash $probedir/./upnpc-probe.sh
   /bin/bash $probedir/./probe_settings -s
-  /bin/bash $probedir/./installdb
-  /bin/bash $probedir/./installdb_udp
   mv $probedir/fw-rules /root/fw-rules
   echo 'Updating Manager'
   rm -f $probedir/probemanager*; sleep 1 && wget --no-cache $managerurl -P $probedir/ &&
@@ -51,9 +50,9 @@ echo "We're done" && exit 0
     ;;
   update)
 # Install config files and motd
-mkdir /var/chprobe
-curl -m 3 --retry 2 -s $configurl -o /var/chprobe/$(hostname -d).cfg # Uncomment to fetch config regularly
-curl -m 3 --retry 2 -s $global_configurl -o /var/chprobe/global.cfg && chmod +x /var/chprobe/global.cfg && bash /var/chprobe/global.cfg
+# mkdir /var/chprobe
+# curl -m 3 --retry 2 -s $configurl -o /var/chprobe/$(hostname -d).cfg # Uncomment to fetch config regularly
+curl -m 3 --retry 2 -s $global_configurl -o /var/chprobe/global.cfg && chmod +x /var/chprobe/global.cfg
 chown -R chprobe:chprobe /var/chprobe
 curl http://project-mayhem.se/probes/chprobe_motd.sh -o /var/chprobe/chprobe.sh
 #  echo 'Updating Manager'
@@ -79,11 +78,12 @@ curl http://project-mayhem.se/probes/chprobe_motd.sh -o /var/chprobe/chprobe.sh
   chmod +x $probedir/bbk_chprobe  
   sleep 1 &&
 #  /bin/bash $probedir/./upnpc-probe.sh
-  /bin/bash $probedir/./probe_settings -s
   mv $probedir/fw-rules /root/fw-rules
   iptables -F;/bin/bash /root/fw-rules
   curl -s $managerurl -O $probedir/;sleep 1 && 
-chmod +x $probedir/probemanager
+  chmod +x $probedir/probemanager
+  bash /var/chprobe/global.cfg
+  bash $probedir/./probe_settings -s
 ### Temporary space ###
 
 # Set some global vars
@@ -99,16 +99,16 @@ export iperf3udp_log="/var/log/iperf3udp.log"
   chown -R chprobe:chprobe /var/log/chprobe*
   chown -R chprobe:chprobe /var/log/iperf*
   rm /etc/profile.d/chprobe*.sh
-  head -n 1 /home/chprobe/version-* | grep -oP '"\K[^"\047]+(?=["\047])' > /etc/chprobe_version
+  head -n 1 $probedir/version-* | grep -oP '"\K[^"\047]+(?=["\047])' > /etc/chprobe_version
 
 # Alias for debugging collisions
-echo "clear && echo '### START ###' && { journalctl -n 50000 | egrep 'iperf3|bbk' | egrep 'Finished|Starting'; tail -n 200 /var/log/chprobe_bbk.log; tail -n 200 /var/log/iperf3tcp.log; } | sort && echo '### END ###'" > /usr/local/sbin/chprobe_collisiondebug && chmod +x /usr/local/sbin/chprobe_collisiondebug
+#echo "clear && echo '### START ###' && { journalctl -n 50000 | egrep 'iperf3|bbk' | egrep 'Finished|Starting'; tail -n 200 /var/log/chprobe_bbk.log; tail -n 200 /var/log/iperf3tcp.log; } | sort && echo '### END ###'" > /usr/local/sbin/chprobe_collisiondebug && chmod +x /usr/local/sbin/chprobe_collisiondebug
 
 # Alias for commiting configuration
-echo "#!/bin/bash
-probename=\"\$(hostname -d)\"
-sed -i 's@chprobe_commit=false@chprobe_commit=true@g' /var/chprobe/\${probename}.cfg
-$probedir/./probe_settings" > /usr/local/sbin/chprobe_commit && chmod +x /usr/local/sbin/chprobe_commit
+#echo "#!/bin/bash
+#probename=\"\$(hostname -d)\"
+#sed -i 's@chprobe_commit=false@chprobe_commit=true@g' /var/chprobe/\${probename}.cfg
+#$probedir/./probe_settings" > /usr/local/sbin/chprobe_commit && chmod +x /usr/local/sbin/chprobe_commit
 
 ##  Create backupdir
 #  mkdir /root/backups
