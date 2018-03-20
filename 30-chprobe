@@ -1,0 +1,66 @@
+#!/bin/bash
+# Put this file in your NM dispatcher dir (should be /etc/NetworkManager/dispatcher.d/)
+probedir="/home/chprobe/"
+
+# IF function
+if_reset () {
+default_if=`ip link show | awk '{print $2}' | egrep 'en|eth' | head -1 | tr -d ':'` &> /dev/null
+ENVFILE="/var/chprobe/chprobe_forcedown"
+source $ENVFILE
+
+# Check connectivity and try to recover if not
+noconnectivity="$(ping -c 10 8.8.8.8 | grep 100% | wc -l)"
+noloop="$(tail -n 500 /var/log/messages | grep 'Stopping Network Manager' | wc -l)"
+if [ $noconnectivity -ge 1 ]; then echo "[chprobe_error] Got no errors, but not a single packet went through" | logger -p local5.err
+       if [ $noloop -ge 1 ];then echo "[chprobe_error] We've already restarted Network Manager recently, no point in doing it again." | logger -p local5.err
+       else systemctl restart NetworkManager && echo "[chprobe_error] Seems we don't have internet connectivity, restarting NetworkManager in case it's just us" | logger -p local5.err;fi
+       else
+
+# In case ping returns errors
+ping -q -c 1 8.8.8.8
+if [ $? -ge 2 ]; then echo "[chprobe_error] We don't have connectivity (error returned: $?)" | logger -p local5.err
+        if [ $noloop -ge 1 ];then echo "[chprobe_error] We've already restarted Network Manager recently, no point in doing it again." | logger -p local5.err
+           if [ $chprobe_forcedown = false ]; then
+        ifdown $default_if;sleep 1;ifup $default_if;echo "[chprobe_error] Forced $default_if down and up again.." && echo "chprobe_forcedown=true" > $ENVFILE
+           fi
+        else systemctl restart NetworkManager && echo "[chprobe_error] Seems we don't have internet connectivity, restarting NetworkManager in case it's just us" | logger -p local5.err;fi
+else
+        echo "[chprobe] We have connectivity" | logger -p notice && echo "chprobe_forcedown=false" > $ENVFILE;fi;fi
+}
+
+# SSH Tunnel function
+chprobe_tunnel () {
+systemctl restart sshtunnel # Always restart the sshtunnel when function is called
+echo '[chprobe_sshtunnel] SSH Tunnel restarted due to link event' | logger -p local5.err
+sleep 5 # Wait and check status
+if [ `systemctl status sshtunnel -l | egrep -c 'error|fail|unreach'` -ge 1 ]; then
+backoff=20
+for retries in {1..20};do # Retry 20 times before giving up
+backoff=$(( $backoff + 5 ))
+   if [ `systemctl status sshtunnel -l | egrep -c 'error|fail|unreach'` -ge 1 ]; then  
+   systemctl restart sshtunnel && echo "[chprobe_sshtunnel] Restarted sshtunnel $retries times due to errors. Waiting for $backoff and trying again." | logger -p local5.err
+   sleep $backoff
+   else echo "[chprobe_sshtunnel] Tunnel is up and running! Errors: `systemctl status sshtunnel -l | egrep -c 'error|fail|unreach'`" | logger -p notice
+   fi
+      if [ $retries -eq 20 ]; then && echo "[chprobe_sshtunnel] Reached maximum number of retries ($retries).. Giving up" | logger -p local5.err
+      else "[chprobe_sshtunnel] SSH Tunnel was re-established successfully after $retries retries" | logger -p notice
+      fi
+   done
+elif [ `systemctl is-active sshtunnel` != 'active' ]; then
+systemctl restart sshtunnel
+fi
+}
+
+# Put everything in a function so we can daemonize it if needed
+chprobe_reinit () {
+iptables -F
+sh /root/fw-rules
+${probedir}callhome.sh
+${probedir}upnpc-probe.sh
+chprobe_tunnel
+}
+
+if [ "$2" = "up" ]; then
+# Restart sshtunnel and reload firewall
+if_reset;chprobe_reinit
+fi
