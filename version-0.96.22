@@ -124,3 +124,5 @@ current_version="0.96.22"
 5. Added new feature to optionally enable an iperf3 server as a systemd service with anti-crash mechanisms
 6. Added nm-dispatcher script to reload firewall/sshtunnel on link events
 7. Applied tweaks to be more robust on recovering from link/ip issues
+8. Added possibility to append custom firewall exceptions via the config file
+9. Fix for ssh management not working when DNS is unavailable
