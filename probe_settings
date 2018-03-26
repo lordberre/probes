@@ -2,7 +2,8 @@
 declare -i probe_settings_version=3 # Version 3.1.0
 
 # Load config file
-chprobe_configfile="/var/chprobe/$(hostname -d).cfg"
+probe="`cut -d "." -f 2 <<< $(hostname)`"
+chprobe_configfile="/var/chprobe/${probe}.cfg"
 source $chprobe_configfile
 
 # Abort if probe settings are disabled
@@ -12,9 +13,14 @@ fi
 # If configuration is commited, check all variables
 if [ $chprobe_commit = "true" ]; then
 
+# Reload firewall rules
+iptables -F && /root/./fw-rules
+
 # Check config version against this script
 if [ $chprobe_configversion -ne $probe_settings_version &> /dev/null ]; then
-echo "Error: Probe configuration file is out of date!" # && exit 1
+echo "[chprobe_error]: Probe configuration file is out of date!" | logger -p local5.err # && exit 1
+elif [ `wc -l chprobe_configfile` -eq 0 &> /dev/null ]; then echo "[chprobe_error] Config file is empty!" | logger -p local5.err && exit 1
+elif [ ! -f $chprobe_configfile ]; then echo "[chprobe_error] Config file doesn't exist" | logger -p local5.err && exit 1
 fi
 
 # Config Fail Check function
@@ -217,7 +223,7 @@ echo "2-12/2 * * * * $cron_user $probedir./icmp_chprobe -v4 $icmp1_packets $icmp
 fi
 
 if [ $chprobe_dns = "enable" ]; then
-	if [ $dig_server = "auto" ]; then dig_server="$(nmcli dev show  | grep 'IP4.DNS\[1]' | awk {'print $2'})";fi
+	if [ $dig_server = "auto" ]; then dig_server="$(nmcli dev show  | grep 'IP4.DNS\[1]' | awk {'print $2'} | head -1)";fi
 echo "2-12/2 * * * * $cron_user $probedir./multi_chprobe -d $dig_server $dig_target 4 &> /dev/null
 18-28/2 * * * * $cron_user $probedir./multi_chprobe -d $dig_server $dig_target 4 &> /dev/null
 32-58/2 * * * * $cron_user $probedir./multi_chprobe -d $dig_server $dig_target 4 &> /dev/null" >> /etc/crontab
@@ -250,7 +256,7 @@ echo "2-12/2 * * * * $cron_user $probedir./multi_chprobe -e $https_target 6 &> /
 fi
 
 	if [ $chprobe_dns = "enable" ]; then
-        	if [ $dig_server_ipv6 = "auto" ]; then dig_server_ipv6="$(nmcli dev show  | grep 'IP6.DNS\[1]' | awk {'print $2'})";fi
+        	if [ $dig_server_ipv6 = "auto" ]; then dig_server_ipv6="$(nmcli dev show  | grep 'IP6.DNS\[1]' | awk {'print $2'} | head -1)";fi
 echo "2-12/2 * * * * $cron_user $probedir./multi_chprobe -d $dig_server_ipv6 $dig_target 6 &> /dev/null
 18-28/2 * * * * $cron_user $probedir./multi_chprobe -d $dig_server_ipv6 $dig_target 6 &> /dev/null
 32-58/2 * * * * $cron_user $probedir./multi_chprobe -d $dig_server_ipv6 $dig_target 6 &> /dev/null" >> /etc/crontab
@@ -266,7 +272,7 @@ echo "*/$icmp_cron_interval  *  *  *  * $cron_user $probedir./icmp_chprobe -v4 $
 		fi
 
 if [ $chprobe_dns = "enable" ]; then
-	if [ $dig_server = "auto" ]; then dig_server="$(nmcli dev show  | grep 'IP4.DNS\[1]' | awk {'print $2'})";fi
+	if [ $dig_server = "auto" ]; then dig_server="$(nmcli dev show  | grep 'IP4.DNS\[1]' | awk {'print $2'} | head -1)";fi
 echo "*/$dig_interval * * * * $cron_user $probedir./multi_chprobe -d $dig_server $dig_target 4 &> /dev/null" >> /etc/crontab
 fi
 
@@ -286,7 +292,7 @@ echo "*/$icmp_cron_interval_ipv6  *  *  *  * $cron_user $probedir./icmp_chprobe 
 fi
 
 if [ $chprobe_dns = "enable" ]; then
-        if [ $dig_server_ipv6 = "auto" ]; then dig_server_ipv6="$(nmcli dev show  | grep 'IP6.DNS\[1]' | awk {'print $2'})";fi
+        if [ $dig_server_ipv6 = "auto" ]; then dig_server_ipv6="$(nmcli dev show  | grep 'IP6.DNS\[1]' | awk {'print $2'} | head -1)";fi
 echo "*/$dig_interval * * * * $cron_user $probedir./multi_chprobe -d $dig_server_ipv6 $dig_target 6 &> /dev/null" >> /etc/crontab
 fi
 
@@ -338,11 +344,17 @@ weekly
 rotate 2
 size 500K
 delaycompress
+postrotate
+/bin/kill -HUP `cat /var/run/syslogd.pid 2> /dev/null` 2> /dev/null || true
+endscript
 }
 /var/log/chprobe_wanip.txt {
 daily
 rotate 0
 size 1000
+postrotate
+/bin/kill -HUP `cat /var/run/syslogd.pid 2> /dev/null` 2> /dev/null || true
+endscript
 }" > /etc/logrotate.d/chprobe
 logrotate /etc/logrotate.d/chprobe
 fi
@@ -372,6 +384,7 @@ if [ $chprobe_iperf3_localserver = "enable" ]; then
         fi
  else echo "ERROR: No iperf3 systemd service was detected, can't start iperf3 server"
  fi
+else systemctl stop iperf3@$chprobe_iperf3_serverport && systemctl disable iperf3@$chprobe_iperf3_serverport &> /dev/null
 fi
 
 # Check if iperf3 servers are manually configured and save target locally
@@ -385,7 +398,7 @@ fi
 # Reload necessary modules when config is being commited
 if [ $chprobe_commit = "true" ]; then
 # systemctl restart sshtunnel
-echo "$(date) - Configuration commit for $(hostname -d)" >> /var/log/chprobe_commits.log
+echo "$(date) - Configuration commit for ${probe}" >> /var/log/chprobe_commits.log
 fi
 
 # Copy interface init script to nm dispatcher
