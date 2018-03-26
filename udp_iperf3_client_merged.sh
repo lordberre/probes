@@ -35,7 +35,9 @@ declare -i chprobe_iperf3udp_stream_t2=60
 declare -i chprobe_iperf3udp_stream_t3=60
 
 # Load configuration file
-source /var/chprobe/$(hostname -d).cfg
+probe="`cut -d "." -f 2 <<< $(hostname)`"
+chprobe_configfile="/var/chprobe/${probe}.cfg"
+source $chprobe_configfile
 
 # Remote url stuff
 ip_url="http://project-mayhem.se/probes/ip-udp.txt"

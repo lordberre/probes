@@ -15,7 +15,7 @@ forced_bandwidth=false
 ip_version=4
 
 # For global zone, if you want something else than hostname, then edit below
-probename="$(hostname -d)"
+probename="`cut -d "." -f 2 <<< $(hostname)`"
 
 # Variables to load in case the config file is skipped or fails to load
 # Default sessions: 15 sessions
@@ -153,7 +153,10 @@ count=$(( ( RANDOM % 9999 )  + 1 ))
 
 # Load configuration file
 if [ $skip_configfile = "false" ]; then
-source /var/chprobe/$(hostname -d).cfg || skip_configfile=true
+probe=$probename
+chprobe_configfile="/var/chprobe/${probe}.cfg"
+source $chprobe_configfile || skip_configfile=true
+
 
 # Also update the cache file, in case the script was run with '-s' or '-f' in between configuration commits
  if [ $chprobe_iperf3tcp_target != "disable" ]; then
@@ -296,7 +299,7 @@ fi
 if [ $chprobe_iperf3tcp_target = "disable" ] 2> $REDIRECT; then
 # Run the remote check, then use a unique timer to better avoid collisionss
 	if [ $zone != "x" ]; then
-	ip_url="http://project-mayhem.se/probes/$(hostname -d)_timer.txt"
+	ip_url="http://project-mayhem.se/probes/${probe}_timer.txt"
 	urlz="curl -m 3 --retry 2 -s -o /dev/null -w \"%{http_code}\" \$ip_url"
 	urlcheck=$(eval $urlz)
 

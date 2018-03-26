@@ -14,7 +14,7 @@ logtag_ipv6=chprobe_bbk_ipv6[$(echo $count)]
 probetimer=5
 
 # For global zone, if you want something else than hostname, then edit below
-probename="$(hostname -d)"
+probename="`cut -d "." -f 2 <<< $(hostname)`"
 
 # Should the script continue even if remote server is inresponsive? Default is true
 force_start=true
@@ -25,7 +25,7 @@ bbk_apiurl="http://project-mayhem.se/probes/bbk_api.php"
 # Functions and variables
 localstatus="$(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)"
 bbk_remotestatusv2="curl --retry 2 -m 3 -s -o /dev/null -w \"%{http_code}\" \$bbk_apiurl"
-globalzone_url="http://project-mayhem.se/probes/bbkzone_$probename"
+globalzone_url="http://project-mayhem.se/probes/bbkzone_${probename}"
 
 reinit_status () {
 localstatus="$(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)"
@@ -111,12 +111,12 @@ fi
 if [ $zone = "z" ];then echo "[$logtag] Using global zone" | logger -p notice && zone="$(curl -m 3 --retry 2 -s -XGET $globalzone_url)"; 
 
 # Run the remote check, then use a unique timer to better avoid collisions
-ip_url="http://project-mayhem.se/probes/$(hostname -d)_timer.txt"
+ip_url="http://project-mayhem.se/probes/${probename}_timer.txt"
 urlz="curl --retry 2 -m 3 -s -o /dev/null -w \"%{http_code}\" \$ip_url"
 urlcheck=$(eval $urlz)
 
 # Use cached ip if remote server is not responding
-if [ $urlcheck -ne 200 ]; then probetimer="$(cat /var/chprobe/prober_timer.txt)"
+if [ $urlcheck -ne 200 ]; then probetimer="$(cat /var/chprobe/probe_timer.txt)"
         else probetimer="$(curl -m 3 --retry 2 -s $ip_url)" && curl -m 3 --retry 2 -s -o /var/chprobe/probe_timer.txt $ip_url
 fi
 
@@ -162,7 +162,7 @@ fi
                 4)
 unique_sleep
 setzone 1; echo "[$logtag] Starting bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice &&
-bbk_cli --live --quiet | sed 's@-1@BBK_ERROR@g' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) $logtag: /" >>/var/log/chprobe_bbk.log &&
+bbk_cli --live --quiet | sed 's@-1@BBK_ERROR@g' | sed -e "s/^/$(date "+%b %d %H:%M:%S") ${probename} $logtag: /" >>/var/log/chprobe_bbk.log &&
 
 # Set zone status to 0 when done
 setzone 0; echo "[$logtag] Finished bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice
@@ -170,7 +170,7 @@ setzone 0; echo "[$logtag] Finished bbk_cli [debug: $localstatus | $(pgrep -f 'b
 		6)
 unique_sleep
 setzone 1; echo "[$logtag_ipv6] Starting bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice &&
-bbk_cli --live --quiet --v6 | sed 's@-1@BBK_ERROR@g' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) $logtag_ipv6: /" >>/var/log/chprobe_bbk.log &&
+bbk_cli --live --quiet --v6 | sed 's@-1@BBK_ERROR@g' | sed -e "s/^/$(date "+%b %d %H:%M:%S") ${probename} $logtag_ipv6: /" >>/var/log/chprobe_bbk.log &&
 
 # Set zone status to 0 when done
 setzone 0; echo "[$logtag_ipv6] Finished bbk_cli [debug: $localstatus | $(pgrep -f 'bbk_cli|tcp_iperf3|iperf3tcp' | wc -l)]" | logger -p notice

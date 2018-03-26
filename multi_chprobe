@@ -2,6 +2,7 @@
 # Version 0.62 (DNS timeout parse)
 count=$(( ( RANDOM % 9999 )  + 100 ))
 logfacility="multi_chprobe[$(echo $count)]"
+probe="`cut -d "." -f 2 <<< $(hostname)`"
 
 # Make sure we're not overloaded with scripts
 while [ `pgrep -f 'chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe' | wc -l` -ge 100 ];do echo "[chprobe_error] We've got many scripts running. Some other script is hanging us or the host(s) is not very responsive. Sending SIGTERM to all scripts and trying to SIGINT daemons" | logger -p local5.err && kill $(pgrep -f "chprobe_icmp|chprobe_multi|multi_chprobe|icmp_chprobe" | awk '{print $1}') && kill -2 $(pgrep -f "ping" | awk '{print $1}'); done
@@ -28,7 +29,7 @@ http_target=$4
 threads=$1
 connections=$2
 http_target2=$(echo $http_target | sed "s/http://g" | tr -d '/')
-wrk -t $threads -c $connections -d $duration $http_target | sed 's/ms/ /g' | egrep -v 'Thread|threads|Running' | xargs | sed "s/2xx//g" | sed "s/3xx//g" | tr -d ':|Requests|sec|Transfer|Socket|errors|requests|connect|read|write|,|timeout|Latency|Avg|Stdev|Max|+|-|/|Stdev|%|B|p|K|M|Non|-' | tr -s ' ' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_wrk[$(echo $count)]: $threads $connections $http_target2/" >>/var/log/chprobe_wrk.log
+wrk -t $threads -c $connections -d $duration $http_target | sed 's/ms/ /g' | egrep -v 'Thread|threads|Running' | xargs | sed "s/2xx//g" | sed "s/3xx//g" | tr -d ':|Requests|sec|Transfer|Socket|errors|requests|connect|read|write|,|timeout|Latency|Avg|Stdev|Max|+|-|/|Stdev|%|B|p|K|M|Non|-' | tr -s ' ' | sed -e "s/^/$(date "+%b %d %H:%M:%S") ${probe} chprobe_wrk[$(echo $count)]: $threads $connections $http_target2/" >>/var/log/chprobe_wrk.log
                            ;;
                 -e)
 shift
@@ -36,7 +37,7 @@ ip_version=$2
 if [ $ip_version = "4" ]; then service=echoping;elif [ $ip_version = "6" ]; then service=echoping_v6;fi # For tagging the log
 http_target=$1
 http_target2=$(echo $http_target | sed "s/http://g" | tr -d '/')
-/usr/bin/echoping -P 0xa0 -$ip_version -p 6 -t 20 -w 1 -C -h / -A -a -R -n 5 $http_target | egrep 'Average|Maximum|Minimum|Median|Standard' | awk '{print $3}' | xargs | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) chprobe_$service[$(echo $count)]: $http_target2 /" >>/var/log/chprobe_https.log
+/usr/bin/echoping -P 0xa0 -$ip_version -p 6 -t 20 -w 1 -C -h / -A -a -R -n 5 $http_target | egrep 'Average|Maximum|Minimum|Median|Standard' | awk '{print $3}' | xargs | sed -e "s/^/$(date "+%b %d %H:%M:%S") ${probe} chprobe_$service[$(echo $count)]: $http_target2 /" >>/var/log/chprobe_https.log
                        ;;
 		-d)
 shift

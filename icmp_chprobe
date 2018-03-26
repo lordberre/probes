@@ -9,6 +9,7 @@ logfacility="chprobe_icmp[$(echo $count)]"
 logfacility_v6="chprobe_icmp_ipv6[$(echo $count)]"
 errordump=/home/chprobe/chprobe_debug.log
 debug=true
+probe="`cut -d "." -f 2 <<< $(hostname)`"
 
 # Debug
 chprobe_debug () {
@@ -40,12 +41,12 @@ do
         case "$1" in
                 -v4)
 
-ping -4 -q -w $deadline -i $interval -s $icmp_size $icmp_target | xargs | sed 's/\<loss\>//g' | awk '{print $2,$26,$18,$20}' | tr -d ',' | sed 's!/! !' | sed 's!/! !' | sed 's!/! !' | tr -d '%' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) $logfacility: $icmp_size $interval /" >>/var/log/chprobe_icmp.log
+ping -4 -q -w $deadline -i $interval -s $icmp_size $icmp_target | xargs | sed 's/\<loss\>//g' | awk '{print $2,$26,$18,$20}' | tr -d ',' | sed 's!/! !' | sed 's!/! !' | sed 's!/! !' | tr -d '%' | sed -e "s/^/$(date "+%b %d %H:%M:%S") ${probe} $logfacility: $icmp_size $interval /" >>/var/log/chprobe_icmp.log
 ;;
 
 		-v6)
 
-ping -6 -q -w $deadline -i $interval -s $icmp_size $icmp_target | xargs | sed 's/\<loss\>//g' | awk '{print $25,$24,$16,$17}' | tr -d ',' | sed 's!/! !' | sed 's!/! !' | sed 's!/! !' | tr -d '%|packet|ms|rivd|=' | sed -e "s/^/$(date "+%b %d %H:%M:%S") $(hostname -d) $logfacility_v6: $icmp_size $interval $icmp_target /" | tr -s ' ' >>/var/log/chprobe_icmp.log
+ping -6 -q -w $deadline -i $interval -s $icmp_size $icmp_target | xargs | sed 's/\<loss\>//g' | awk '{print $25,$24,$16,$17}' | tr -d ',' | sed 's!/! !' | sed 's!/! !' | sed 's!/! !' | tr -d '%|packet|ms|rivd|=' | sed -e "s/^/$(date "+%b %d %H:%M:%S") ${probe} $logfacility_v6: $icmp_size $interval $icmp_target /" | tr -s ' ' >>/var/log/chprobe_icmp.log
 
 ;;
                                 -h)  cat <<USAGE
