@@ -1,4 +1,10 @@
-# Version 1.52
+#!/bin/bash
+# Version 1.61
+
+# Load configuration file
+probe="`cut -d "." -f 2 <<< $(hostname)`"
+chprobe_configfile="/var/chprobe/${probe}.cfg"
+source $chprobe_configfile
 
 # basic
 iptables -P INPUT ACCEPT
@@ -21,7 +27,7 @@ iptables -A INPUT -s 83.255.225.1/24 -p tcp --dport 34521 -j ACCEPT
 iptables -A INPUT -s 83.248.145.173/32 -p tcp --dport 34521 -j ACCEPT
 iptables -A INPUT -s 83.255.229.1/24 -j ACCEPT
 iptables -A INPUT -s 94.137.97.98/32 -p tcp --dport 34521 -j ACCEPT
-iptables -A INPUT -s $(cat /var/ip-udp.txt) -p tcp --dport 34521 -j ACCEPT
+iptables -A INPUT -s $(cat /var/chprobe/ip-udp.txt) -p tcp --dport 34521 -j ACCEPT
 iptables -A INPUT -s 213.89.17.164/32 -j ACCEPT
 
 # Allow SSH from local subnets
@@ -31,8 +37,19 @@ iptables -A INPUT -s 192.168.1.1/24 -p tcp --dport 34521 -j ACCEPT
 # uPnP
 iptables -A INPUT -s $(/sbin/ip route | awk '/default/ { print $3 }') -j ACCEPT
 
-# darkstat
-# iptables -A INPUT -p tcp -m tcp --dport 35631 -j ACCEPT
+# Iperf3 server
+if [ $chprobe_iperf3_localserver = "enable" ];then
+iptables -A INPUT $chprobe_iperf3_firewall -j ACCEPT
+fi
+
+# Custom rules
+if [ $chprobe_customrule = "enable" ]; then
+OLDIFS=$IFS
+IFS=$'\n'
+for rules in ${chprobe_customfwrule[*]};do eval "iptables -A INPUT $rules -j ACCEPT"
+done
+IFS=$OLDIFS
+fi
 
 # drop rest
 iptables -A INPUT -j DROP
