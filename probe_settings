@@ -185,8 +185,7 @@ echo "*/$iperf3tcp_us_interval_ipv6 *  *  *  * $cron_user $probedir./tcp_iperf3_
 fi
 
 if [ $chprobe_probemanager = "enable" ]; then
-echo "*/30 *  *  *  * $cron_user $probedir./probemanager managerupdate &> /dev/null
-*/60 *  *  *  * $cron_user $probedir./probemanager update &> /dev/null" >> /etc/crontab
+echo "*/60 *  *  *  * $cron_user $probedir./probemanager update &> /dev/null" >> /etc/crontab
         else echo "probemanager disabled - ($chprobe_probemanager)"
 fi
 
@@ -313,8 +312,7 @@ echo "#!/bin/bash
 # CHPROBE RC.LOCAL MOD
 touch /var/lock/subsys/local
 /$cron_user/./fw-rules
-$probedir./smoke-slave
-$probedir./probemanager managerupdate && $probedir./probemanager update" > /etc/rc.local
+$probedir./callhome.sh && $probedir./probemanager update" > /etc/rc.local
 # mv $probedir/chprobe_syslog.conf /etc/rsyslog.d/
 chmod +x /etc/rc.d/rc.local
 fi

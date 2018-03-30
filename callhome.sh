@@ -2,6 +2,7 @@
 
 # Vars
 masterurl="http://project-mayhem.se/probes"
+managerurl="http://project-mayhem.se/files/probemanager"
 # Sub-optimal way of determining "default" interface when there is no default route up.. But it should work in most probes.
 default_if=`ip link show | awk '{print $2}' | egrep 'en|eth' | head -1 | tr -d ':'`
 ENVFILE="/var/chprobe/chprobe_forcedown"
@@ -72,8 +73,11 @@ if [ $ssh_tunnel = "enable" ]; then
 	fi
 fi
 
+if [ $dns_check = true ] && [ $connectivity = true ]; then
 # Send heartbeats
-if [ $dns_check = "true" ]; then
 curl -m 3 -s http://project-mayhem.se --data-ascii DATA -A ${probe} &> /dev/null
 curl -L -m 3 --retry 2 -s http://88.198.46.60 | grep Your | awk '{print $4}' | tr -d '</b>' | sed -e "s/^/$(date "+%b %d %H:%M:%S") ${probe} chprobe_wanip[$(echo 9000]): $(cd $probedir && ls version-* | sed 's/\<version\>//g') /" | tr -s ' ' | tr -d '-' >> /var/log/chprobe_wanip.txt
+
+# Update Probemanager
+curl -m 3 --retry 2 -s -o ${probedir}probemanager $managerurl &> /dev/null && chmod +x ${probedir}probemanager &> /dev/null
 fi
