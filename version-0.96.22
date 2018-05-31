@@ -1,7 +1,7 @@
-current_version="0.96.22"
+current_version="0.96.22b"
 
 # Known issues
-# Last update: v.0.96.22
+# Last update: v.0.96.22b
 -
 
 # v0.93
@@ -126,3 +126,7 @@ current_version="0.96.22"
 7. Applied tweaks to be more robust on recovering from link/ip issues
 8. Added possibility to append custom firewall exceptions via the config file
 9. Fix for ssh management not working when DNS is unavailable
+
+# v0.96.22b
+1. Added more UDP ports to scripts and server for iperf3 udp stream tests
+2. Minor fixes and improvements
