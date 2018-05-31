@@ -91,7 +91,20 @@ portz[2]="5220"
 portz[3]="5225"
 portz[4]="5230"
 portz[5]="5235"
-randport=$[ $RANDOM % 6 ]
+portz[6]="5236"
+portz[7]="5237"
+portz[8]="5238"
+portz[9]="5239"
+portz[10]="5240"
+portz[11]="5241"
+portz[12]="5242"
+portz[13]="5243"
+portz[14]="5244"
+portz[15]="5245"
+portz[16]="5246"
+portz[17]="5247"
+portz[18]="5248"
+randport=$[ $RANDOM % 18 ]
 
 # Only go into anti-collision loop if the bandwidth is 20 mbit or higher
 if [ ${arr[$rand]} -ge 20 ]; then udp_anticollision=1
@@ -113,7 +126,7 @@ while [ `pgrep -f 'bbk|iperf3|wrk' | wc -w` -ge 30 ];do kill $(pgrep -f "iperf3|
 case "$(pgrep -f "iperf3 --client" | wc -w)" in
 
 0)  echo "[$logtag] Let's see if we can start the udp daemon" | logger -p info
-    while iperf3 -c $target -p ${portz[$randport]} -t 1 2> /dev/stdout | grep busy; do randport=$[ $RANDOM % 6 ] && sleep $[ ( $RANDOM % 10 ) + 3]s && echo "[$logtag] server is busy. We slept a bit, now rolling the dice for the port" | logger -p info;done
+    while iperf3 -c $target -p ${portz[$randport]} -t 1 2> /dev/stdout | grep busy; do randport=$[ $RANDOM % 18 ] && sleep $[ ( $RANDOM % 10 ) + 3]s && echo "[$logtag] server is busy. We slept a bit, now rolling the dice for the port" | logger -p info;done
     echo "[$logtag] udp daemon started - $direction" | logger -p info
 	eval $udpdaemon &
 	if [ $iwdetect -gt 0 ]; then
