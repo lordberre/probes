@@ -57,6 +57,11 @@ else
 fi
 done
 ;;
+
+                -p) echo "not implemented"
+shift
+
+                       ;;
                                 -h)  cat <<USAGE
 usage: $0 [-e] [-w] [-h] [-d] args
 
@@ -64,6 +69,7 @@ usage: $0 [-e] [-w] [-h] [-d] args
     -w) Use wrk binary 
     -e) Use echoping binary
     -d) Use dig binary
+    -p) Use ping on all devices in subnet
 USAGE
             exit 1
             ;;
