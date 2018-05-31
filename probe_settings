@@ -1,5 +1,8 @@
 #!/bin/bash
-declare -i probe_settings_version=3 # Version 3.1.0
+declare -i probe_settings_version=3 # Version 3.2.0
+
+# Default values
+chprobe_ipv6=auto
 
 # Load config file
 probe="`cut -d "." -f 2 <<< $(hostname)`"
@@ -118,18 +121,22 @@ USAGE
     esac
 
 # Check IPv6 connectivity
+if [ $chprobe_ipv6 = "auto" ];then
 echo "Checking IPv6 connectivity, stay tuned... (Your commit should be OK. Bye bye!)" &&
 
 # In case ping6 returns errors we assume IPv6 isn't working
 ping6 -q -c 1 2a00:1450:400f:80a::2003
 if [ $? -ge 2 ]; then echo "We don't have IPv6 connectivity (error returned: $?)" && ipmode=ipv4
-	else
+        else
 
-	# No errors returned at least, let's see if we actually have connectivity
-	noconnectivity="$(ping6 -q -c 10 2a00:1450:400f:80a::2003 | egrep '100%' | wc -l)"
-	if [ $noconnectivity -ge 1 ]; then echo "We don't have IPv6 connectivity" && ipmode=ipv4
+        # No errors returned at least, let's see if we actually have connectivity
+        noconnectivity="$(ping6 -q -c 10 2a00:1450:400f:80a::2003 | egrep '100%' | wc -l)"
+        if [ $noconnectivity -ge 1 ]; then echo "We don't have IPv6 connectivity" && ipmode=ipv4
        else echo "We have IPv6 connectivity" && ipmode=dualstack
        fi;fi
+elif [ $chprobe_ipv6 = "enable" ]; then ipmode=dualstack
+else ipmode=ipv4
+fi
 
 # chprobe crontab
 if [ $chprobe_crontab = "enable" ]; then
@@ -354,11 +361,7 @@ postrotate
 /bin/kill -HUP `cat /var/run/syslogd.pid 2> /dev/null` 2> /dev/null || true
 endscript
 }" > /etc/logrotate.d/chprobe
-logrotate /etc/logrotate.d/chprobe
 fi
-
-sleep 1 &&
-systemctl restart rsyslog
 
 # Save unique probe timer locally
 echo $chprobe_timer > /var/chprobe/chprobe_timer.txt
