@@ -56,6 +56,12 @@ if [ $? -eq 0 ]; then echo "[chprobe] DNS responses are OK" | logger -p notice &
 else echo "[chprobe] Warning! DNS is not working properly." | logger -p local5.err && dns_check=false
 fi
 
+# Logrotate and restart rsyslogd sometimes
+declare -i random_number=$(( ( RANDOM % 20 )  + 1 ))
+if [ $random_number -eq 10 ]; then
+logrotate /etc/logrotate.d/chprobe && systemctl restart rsyslog
+fi
+
 # If enabled, configure SSH Tunnel
 if [ $ssh_tunnel = "enable" ]; then
 
