@@ -13,6 +13,7 @@ skip_configfile=false
 forced_server=false
 forced_bandwidth=false
 ip_version=4
+set_path=false
 
 # For global zone, if you want something else than hostname, then edit below
 probename="`cut -d "." -f 2 <<< $(hostname)`"
@@ -111,12 +112,13 @@ How to use: $0 -4 or -6 must be specified.
     -f) Force the server target (implies '-s'), must be used with server ip/hostname as argument, e.g: ./iperf3script -f x.x.x.x
     -p) Use udp protocol rather than tcp
     -b) Set bandwidth (udp only) - Input must be an INTEGER and in mbit/s (default is 100mbit)
+    -a) Set PATH if script is called via Ansible
 Note: When using zones, your test might not start immediately
 Example: $ ./iperf3script -d -4 -z 1
 USAGE
  }
 
-options=':z:f:b:46duhgsp'
+options=':z:f:b:46duhgspa'
 while getopts $options option
 do
     case $option in
@@ -130,6 +132,7 @@ do
         u  ) direction=upstream       ;;
         s  ) skip_configfile=true;chprobe_iperf3tcp_target=disable       ;;
         f  ) skip_configfile=true;forced_server=true;chprobe_iperf3tcp_target=${OPTARG}       ;;
+        a  ) set_path=true ;;
         h  ) usage; exit;;
         \? ) echo "Unknown option: -$OPTARG" >&2; exit 1;;
         :  ) echo "Missing option argument for -$OPTARG" >&2; exit 1;;
@@ -157,11 +160,15 @@ probe=$probename
 chprobe_configfile="/var/chprobe/${probe}.cfg"
 source $chprobe_configfile || skip_configfile=true
 
-
 # Also update the cache file, in case the script was run with '-s' or '-f' in between configuration commits
  if [ $chprobe_iperf3tcp_target != "disable" ]; then
  echo $chprobe_iperf3tcp_target > $cachefile
  fi
+fi
+
+# Ansible PATH
+if [ `uname -m` != "armv7l" ] && [ $set_path = true ]; then
+PATH=/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/home/chprobe/.local/bin:/home/chprobe/bin
 fi
 
 if [ $protocol = udp ];then
