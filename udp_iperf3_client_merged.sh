@@ -1,6 +1,5 @@
 #!/bin/bash
-# Version 1.48.0. Added configuration file support for stream bandwidths and length
-# stdout redirect for arm arch
+# Version 1.50.0. Added wifipoller to replace redundant code.
 
 while true
 do
@@ -22,6 +21,7 @@ USAGE
             ;;
     esac;done
 
+shift
 logfacility=local4.debug
 logtag=chprobe_iperf3udp
 count=$(( ( RANDOM % 9999 )  + 1 ))
@@ -63,20 +63,12 @@ udpdaemon="/usr/bin/iperf3 -u --client \$target -T \$direction -R -b \${arr[\$ra
 	else echo 'No direction specified, exiting.' && exit 1
 fi
 
-### WiFi stuff
-iwnic=$(ifconfig | grep wl | awk '{print $1}' | tr -d ':') # Is there a wireless interface?
-iwdetect="$(grep up /sys/class/net/wl*/operstate | wc -l)" # Detect wireless interface state
-wififreq="$(iw $iwnic link | grep freq | awk '{print $2}')" # Detect frequency (2.4GHz or 5Ghz)
-phydetect="$(iw $iwnic link | grep VHT | wc -l)" # What PHY? (Legacy is not supported)
-#phy=$1 # Use argument for PHY instead
-
-#### HT TEMPLATE
-htparse="iw \$iwnic station dump | egrep 'tx bitrate|signal:' | xargs | sed 's/\[.*\]//' | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$7,\$10,\$11,\$12,\$13}' | tr -d 'MHz' | logger -t tx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'rx bitrate|signal:' | xargs | sed 's/\[.*\]//' | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$7,\$10,\$11,\$12,\$13}' | tr -d 'MHz' | logger -t rx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'bytes|packets|retries|failed' | xargs | tr -d 'rx|tx|bytes|packets|retries|failed:' | tr -s ' ' | logger -t iw_counters[\$(echo \$count)] -p \$logfacility"
-####
-
-#### VHT TEMPLATE
-vhtparse="iw \$iwnic station dump | egrep 'tx bitrate|signal:' | xargs | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$15,\$18,\$19,\$20}' | tr -d 'MHz' | logger -t tx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'rx bitrate|signal:' | xargs | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$15,\$18,\$19,\$20}' | tr -d 'MHz' | logger -t rx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'bytes|packets|retries|failed' | xargs | tr -d 'rx|tx|bytes|packets|retries|failed:' | tr -s ' ' | logger -t iw_counters[\$(echo \$count)] -p \$logfacility"
-####
+# Load the Wi-Fi poller
+if [ ! -f $probedir/wifipoller.sh ]; then
+    echo "Could not locate wifipoller script."
+else
+    source $probedir/wifipoller.sh
+fi
 
 # Randomize stream bandwidth.
 arr[0]="$chprobe_iperf3udp_stream_b1"
@@ -129,19 +121,13 @@ case "$(pgrep -f "iperf3 --client" | wc -w)" in
     while iperf3 -c $target -p ${portz[$randport]} -t 1 2> /dev/stdout | grep busy; do randport=$[ $RANDOM % 18 ] && sleep $[ ( $RANDOM % 10 ) + 3]s && echo "[$logtag] server is busy. We slept a bit, now rolling the dice for the port" | logger -p info;done
     echo "[$logtag] udp daemon started - $direction" | logger -p info
 	eval $udpdaemon &
-	if [ $iwdetect -gt 0 ]; then
-            if [ $wififreq -lt 2500 ]; then phy=ht && eval $htparse;else
-                    if [ $phydetect -ge 1 ]; then phy=vht && eval $vhtparse;else phy=ht && eval $htparse;fi;fi
-            else echo 'No WiFi NIC detected'>/dev/stdout;fi    
+        wifi_logger
 ;;
 1)  echo "[$logtag] iperf daemon already running" | logger -p info
           while [ `pgrep -f 'iperf3 --client|bbk_cli' | wc -w` -ge 1 ];do sleep $[ ( $RANDOM % 5 ) + 3]s && echo "[$logtag] waiting cuz either an iperf3 or a bbk daemon is running" | logger -p info;done    
 echo "[$logtag] udp daemon started - $direction" | logger -p info
 	        eval $udpdaemon &
-    if [ $iwdetect -gt 0 ]; then
-            if [ $wififreq -lt 2500 ]; then phy=ht && eval $htparse;else
-                    if [ $phydetect -ge 1 ]; then phy=vht && eval $vhtparse;else phy=ht && eval $htparse;fi;fi
-            else echo 'No WiFi NIC detected'>/dev/stdout;fi	
+                wifi_logger
 ;;
 *)  echo "[$logtag] multiple instances of iperf3 udp daemons currently running." | logger -p info
 #    kill $(pgrep -f "iperf3 --client" | awk '{print $1}') # Disabled to allow bidirectional UDP tests

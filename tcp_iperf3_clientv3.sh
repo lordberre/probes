@@ -1,8 +1,5 @@
 #!/bin/bash
-# Version 2.48.0 (added udp support for high throughput use cases. IP targets are shared with tcp tests for coexist purposes) + fixed tankevurpa. Fixed parsing for udp and iperf 3.3+ + some other udp stuff
-# select-server fix for when global zone is disabled, changed dir temp files.
-# stdout redirect for arm arch and busyloop fixed (broken since iperf3 3.3+)
-# Added IPv6 support
+# Version 2.50.0. Added wifipoller to replace redundant code.
 # Note: Some variables are named "bbk"-something since we're using the same zone functionallity
 
 # Dont touch this
@@ -276,20 +273,12 @@ fi
 done
 }
 
-### WiFi stuff
-iwnic=$(ifconfig 2> $REDIRECT | grep wl | awk '{print $1}' | tr -d ':') # Is there a wireless interface?
-iwdetect="$(grep up /sys/class/net/wl*/operstate 2> $REDIRECT | wc -l)" # Detect wireless interface state
-wififreq="$(iw $iwnic link 2> $REDIRECT | grep freq | awk '{print $2}')" # Detect frequency (2.4GHz or 5Ghz)
-phydetect="$(iw $iwnic link 2> $REDIRECT | grep VHT | wc -l)" # What PHY? (Legacy is not supported)
-#phy=$1 # Use argument instead for PHY instead
-
-#### HT TEMPLATE
-htparse="iw \$iwnic station dump | egrep 'tx bitrate|signal:' | xargs | sed 's/\[.*\]//' | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$7,\$10,\$11,\$12,\$13}' | tr -d 'MHz' | logger -t tx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'rx bitrate|signal:' | xargs | sed 's/\[.*\]//' | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$7,\$10,\$11,\$12,\$13}' | tr -d 'MHz' | logger -t rx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'bytes|packets|retries|failed' | xargs | tr -d 'rx|tx|bytes|packets|retries|failed:' | tr -s ' ' | logger -t iw_counters[\$(echo \$count)] -p \$logfacility"
-####
-
-#### VHT TEMPLATE
-vhtparse="iw \$iwnic station dump | egrep 'tx bitrate|signal:' | xargs | sed 's/\[.*\]//' | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$7,\$10,\$11,\$12,\$13}' | tr -d 'MHz' | logger -t tx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'rx bitrate|signal:' | xargs | sed 's/\[.*\]//' | tr -d 'short|GI' | sed 's/\<VHT-NSS\>//g' | sed -e \"s/^/\$direction /\" | awk '{print \$1,\$3,\$7,\$10,\$11,\$12,\$13}' | tr -d 'MHz' | logger -t rx_linkstats_\$phy[\$(echo \$count)] -p \$logfacility && iw \$iwnic station dump | egrep 'bytes|packets|retries|failed' | xargs | tr -d 'rx|tx|bytes|packets|retries|failed:' | tr -s ' ' | logger -t iw_counters[\$(echo \$count)] -p \$logfacility"
-####
+# Load the Wi-Fi poller
+    if [ ! -f $probedir/wifipoller.sh ]; then
+        echo "Could not locate wifipoller script."
+    else
+        source $probedir/wifipoller.sh
+    fi
 
 # If global zone, then set necessary variables before going further.
 if [ $zone = "z" ];then echo "[$logtag] Using global zone" | logger -p notice && zone="$(curl -m 3 --retry 2 -s -XGET $globalzone_url)"
@@ -355,20 +344,14 @@ case "$(pgrep -f "iperf3 --client" | wc -w)" in
     serverbusy_loop
     echo "[$logtag] Starting $logtag [debug: $localstatus | $(pgrep -f 'bbk_cli|iperf3 --client' | wc -l)]" | logger -p notice
     setzone 1; iperf_daemon;busy_failcheck && echo "[$logtag] daemon finished" | logger -p info &&
-        if [ $iwdetect -gt 0 ] 2> $REDIRECT; then
-            if [ $wififreq -lt 2500 ] 2> $REDIRECT; then phy=ht && eval $htparse;else
-                    if [ $phydetect -ge 1 ] 2> $REDIRECT; then phy=vht && eval $vhtparse;else phy=ht && eval $htparse;fi;fi
-            else echo 'No WiFi NIC detected'>/dev/stdout;fi
+        wifi_logger
 ;;
 1)  echo "[$logtag] iperf daemon is already running" | logger -p info
           while [ `pgrep -f 'iperf3 --client|bbk_cli|wrk' | wc -w` -ge 1 ];do remotelocal_loop; sleep $[ ( $RANDOM % $probetimer ) + 3]s; remotelocal_loop && echo "[$logtag] waiting cuz either an iperf3 or a bbk daemon is running" | logger -p info;done
 	    serverbusy_loop
     echo "[$logtag] Starting $logtag [debug: $localstatus | $(pgrep -f 'bbk_cli|iperf3 --client' | wc -l)]" | logger -p notice
     setzone 1; iperf_daemon;busy_failcheck && echo "[$logtag] daemon finished" | logger -p info
-        if [ $iwdetect -gt 0 ] 2> $REDIRECT; then
-            if [ $wififreq -lt 2500 ] 2> $REDIRECT; then phy=ht && eval $htparse;else
-                    if [ $phydetect -ge 1 ] 2> $REDIRECT; then phy=vht && eval $vhtparse;else phy=ht && eval $htparse;fi;fi
-            else echo 'No WiFi NIC detected'>/dev/stdout;fi
+            wifi_logger
 ;;
 *)  echo "[$logtag] multiple instances of iperf3 daemon running. Stopping & restarting iperf:" | logger -p info
     kill $(pgrep -f "iperf3 --client" | awk '{print $1}')
