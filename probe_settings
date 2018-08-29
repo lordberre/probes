@@ -1,12 +1,13 @@
 #!/bin/bash
-declare -i probe_settings_version=3 # Version 3.2.0
+declare -i probe_settings_version=3 # Version 3.3.0
 
 # Default values
 chprobe_ipv6=auto
+defaultcfg_url="http://project-mayhem.se/probes/chprobe_cfg/chprobe_default.cfg"
 
 # Load config file
 probe="`cut -d "." -f 2 <<< $(hostname)`"
-chprobe_configfile="/var/chprobe/${probe}.cfg"
+chprobe_configfile="/var/chprobe/chprobe.cfg"
 source $chprobe_configfile
 
 # Abort if probe settings are disabled
@@ -21,9 +22,17 @@ iptables -F && /root/./fw-rules
 
 # Check config version against this script
 if [ $chprobe_configversion -ne $probe_settings_version &> /dev/null ]; then
-echo "[chprobe_error]: Probe configuration file is out of date!" | logger -p local5.err # && exit 1
-elif [ `wc -l chprobe_configfile` -eq 0 &> /dev/null ]; then echo "[chprobe_error] Config file is empty!" | logger -p local5.err && exit 1
-elif [ ! -f $chprobe_configfile ]; then echo "[chprobe_error] Config file doesn't exist" | logger -p local5.err && exit 1
+   echo "[chprobe_error]: Probe configuration file is out of date!" | logger -p local5.err # && exit 1
+
+elif [ `wc -l chprobe_configfile` -eq 0 &> /dev/null ]; then
+   echo "[chprobe_error] Config file is empty!" | logger -p local5.err && exit 1
+elif [ ! -f $chprobe_configfile ]; then
+   curl -m 3 --retry 2 -s $defaultcfg_url -o $chprobe_configfile
+   echo "[chprobe_error] Config file doesn't exist." | logger -p local5.err
+   sleep 3
+   if [ -f $chprobe_configfile ]; then
+      echo "[chprobe_error] Loaded default settings due to error." | logger -p local5.err
+   fi
 fi
 
 # Config Fail Check function
