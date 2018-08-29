@@ -3,7 +3,7 @@
 
 # Load configuration file
 probe="`cut -d "." -f 2 <<< $(hostname)`"
-chprobe_configfile="/var/chprobe/${probe}.cfg"
+chprobe_configfile="/var/chprobe/chprobe.cfg"
 source $chprobe_configfile
 
 ip="$(hostname -I | awk '{print $1}')"

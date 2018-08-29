@@ -40,9 +40,9 @@ debug=false
 # Curl RTT
 if [ $use_curl = "true" ]; then
 logfacility="chprobe_httpvalidation[$(echo $count)]"
-http_target=somehost
-url="http://${http_target}/bench/{256K,257K,259K,260K,275K,280K,286K,294K,302K,306K,313K,315K,316K,325K,327K,330K,331K,339K,340K,348K,351K,354K,365K,368K,374K,375K,376K,380K,381K,383K,384K,397K,399K,400K,406K,408K,414K,424K,434K,436K,438K,439K,447K}KB"
-http_outfile="/var/log/chprobe_httpvalidation.log"
+httpv_target=somehost
+httpv_url="http://${http_target}/bench/{256K,257K,259K,260K,275K,280K,286K,294K,302K,306K,313K,315K,316K,325K,327K,330K,331K,339K,340K,348K,351K,354K,365K,368K,374K,375K,376K,380K,381K,383K,384K,397K,399K,400K,406K,408K,414K,424K,434K,436K,438K,439K,447K}KB"
+httpv_outfile="/var/log/chprobe_httpvalidation.log"
 display_options="
 time_namelookup:  %{time_namelookup}\n
 time_connect:  %{time_connect}\n
@@ -62,7 +62,7 @@ parse_result() { # Sums all results since it's presented individually from curl
 echo "$1" | grep $2 | awk '{sum+=$2} END {print sum}'
 }
 
-    result=`curl -L -s -w "$display_options" -o /dev/null "$url"` # | awk {'print $2'} | xargs
+    result=`curl -L -s -w "$display_options" -o /dev/null "$httpv_url"` # | awk {'print $2'} | xargs
     total_time_namelookup=`parse_result "$result" time_namelookup`
     total_time_connect=`parse_result "$result" time_connect`
     total_time_appconnect=`parse_result "$result" time_appconnect`
@@ -75,7 +75,7 @@ echo "$1" | grep $2 | awk '{sum+=$2} END {print sum}'
 #    declare -i total_time_total_int=${total_time_total_ms%.*}
 #    declare -i total_time_total_int=`echo "($total_time_total_ms+0.5)/1" | bc`
     avg_totaltime_perfile=`echo $total_time_total_ms / $file_count | bc`
-    echo "$total_time_namelookup $total_time_connect $total_time_appconnect $total_time_pretransfer $total_time_redirect $total_time_starttransfer $total_time_total" | sed -e "s/^/$(date "+%b %d %H:%M:%S") ${probe} $logfacility: $http_target $file_count $avg_totaltime_perfile /" >> $http_outfile
+    echo "$total_time_namelookup $total_time_connect $total_time_appconnect $total_time_pretransfer $total_time_redirect $total_time_starttransfer $total_time_total" | sed -e "s/^/$(date "+%b %d %H:%M:%S") ${probe} $logfacility: $httpv_target $file_count $avg_totaltime_perfile /" >> $httpv_outfile
 else
     curl -v -w "$display_options" -o /dev/null "$url"
 fi
@@ -104,7 +104,7 @@ iperf3_tcpduration="600"
 
 # DS
    while true;do
-   iperf3 -c $iperf3_server -T downstream -P 2 -i 5 -b $iperf3_tcpbandwidth -p $iperf3_tcpport1 -R -t $iperf3_tcpduration -f m --forceflush | while read i;do echo $i | grep SUM | egrep -v 'receiver|sender' | awk {'print $7'} | sed 's/[^0-9.]*//g' | sed '/^$/d' | sed -e "s/^/$(date "+%b %d %H:%M:%S") ${probe} $iperf3_tcplogfacility: downstream /" >> $iperf3_outfile;done &
+   iperf3 -c $iperf3_tcpserver -T downstream -P 2 -i 5 -b $iperf3_tcpbandwidth -p $iperf3_tcpport1 -R -t $iperf3_tcpduration -f m --forceflush | while read i;do echo $i | grep SUM | egrep -v 'receiver|sender' | awk {'print $7'} | sed 's/[^0-9.]*//g' | sed '/^$/d' | sed -e "s/^/$(date "+%b %d %H:%M:%S") ${probe} $iperf3_tcplogfacility: downstream /" >> $iperf3_outfile;done &
    tcp_pids+=($!)
 
 # US
@@ -124,11 +124,11 @@ iperf3_tcpduration="600"
 # DS
 udp_pids=()
    while true;do 
-   iperf3 -u --client $iperf3_server -T downstream -R -b $iperf3_udpbandwidth -t $iperf3_udpduration -p $iperf3_udpport1 -f m 2> /dev/stdout | egrep 'iperf Done' -B 3 | egrep 0.00-$iperf3_udpduration | grep -v sender | awk '{print $1,$6,$8,$10,$13,$14.$15,$16,$17,$18}' | tr -d '(%)|:' | sed -e "s/^/$(date "+%b %d %H:%M:%S") ${probe} $iperf3_udplogfacility: /" >> $iperf3_outfile &
+   iperf3 -u --client $iperf3_udpserver -T downstream -R -b $iperf3_udpbandwidth -t $iperf3_udpduration -p $iperf3_udpport1 -f m 2> /dev/stdout | egrep 'iperf Done' -B 3 | egrep 0.00-$iperf3_udpduration | grep -v sender | awk '{print $1,$6,$8,$10,$13,$14.$15,$16,$17,$18}' | tr -d '(%)|:' | sed -e "s/^/$(date "+%b %d %H:%M:%S") ${probe} $iperf3_udplogfacility: /" >> $iperf3_outfile &
    udp_pids+=($!)
 
 # US
-   iperf3 -u --client $iperf3_server -T upstream -b $iperf3_udpbandwidth -t $iperf3_udpduration -p $iperf3_udpport2 -f m 2> /dev/stdout | egrep 'iperf Done' -B 3 | egrep 0.00-$iperf3_udpduration | grep -v sender | awk '{print $1,$6,$8,$10,$13,$14.$15,$16,$17,$18}' | tr -d '(%)|:' | sed -e "s/^/$(date "+%b %d %H:%M:%S") ${probe} $iperf3_udplogfacility: /" >> $iperf3_outfile &
+   iperf3 -u --client $iperf3_udpserver -T upstream -b $iperf3_udpbandwidth -t $iperf3_udpduration -p $iperf3_udpport2 -f m 2> /dev/stdout | egrep 'iperf Done' -B 3 | egrep 0.00-$iperf3_udpduration | grep -v sender | awk '{print $1,$6,$8,$10,$13,$14.$15,$16,$17,$18}' | tr -d '(%)|:' | sed -e "s/^/$(date "+%b %d %H:%M:%S") ${probe} $iperf3_udplogfacility: /" >> $iperf3_outfile &
    udp_pids+=($!)
 
        for pid in ${udp_pids[*]}; do

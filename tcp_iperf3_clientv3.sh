@@ -11,6 +11,7 @@ forced_server=false
 forced_bandwidth=false
 ip_version=4
 set_path=false
+probedir="/home/chprobe"
 
 # For global zone, if you want something else than hostname, then edit below
 probename="`cut -d "." -f 2 <<< $(hostname)`"
@@ -154,7 +155,7 @@ count=$(( ( RANDOM % 9999 )  + 1 ))
 # Load configuration file
 if [ $skip_configfile = "false" ]; then
 probe=$probename
-chprobe_configfile="/var/chprobe/${probe}.cfg"
+chprobe_configfile="/var/chprobe/chprobe.cfg"
 source $chprobe_configfile || skip_configfile=true
 
 # Also update the cache file, in case the script was run with '-s' or '-f' in between configuration commits

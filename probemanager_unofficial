@@ -1,13 +1,13 @@
 #!/bin/bash
 # Install or update probe scripts
-# Version 0.50 (20170913)
-probeurl=http://project-mayhem.se/files/chprobe_latest_$(hostname -d).tgz
+# Version 0.51 (20180325)
+probename="`cut -d "." -f 2 <<< $(hostname)`"
+probeurl=http://project-mayhem.se/files/chprobe_latest_${probename}.tgz
 probedefaults=http://project-mayhem.se/files/chprobe_latest_general.tgz
 probedir=/home/chprobe
 managerurl=http://project-mayhem.se/files/probemanager
-# configurl=http://project-mayhem.se/probes/chprobe_cfg/$(hostname -d).cfg # Disabled
+# configurl=http://project-mayhem.se/probes/chprobe_cfg/${probename}.cfg # Disabled
 global_configurl=http://project-mayhem.se/probes/chprobe_cfg/global.cfg
-probename="$(hostname -d)"
 
 case "$1" in
   installation)
@@ -18,7 +18,7 @@ case "$1" in
  chmod +x $probedir/probemanager
   echo 'Downloading & installing probe'
   wget --no-cache $probeurl -P $probedir/ &&
-  tar xvfz $probedir/chprobe_latest_$(hostname -d).tgz -C $probedir/ &&
+  tar xvfz $probedir/chprobe_latest_${probename}.tgz -C $probedir/ &&
   chmod +x $probedir/probe_settings
   chmod +x $probedir/fw-rules
   chmod +x $probedir/probemanager
@@ -51,7 +51,7 @@ echo "We're done" && exit 0
   update)
 # Install config files and motd
 # mkdir /var/chprobe
-# curl -m 3 --retry 2 -s $configurl -o /var/chprobe/$(hostname -d).cfg # Uncomment to fetch config regularly
+# curl -m 3 --retry 2 -s $configurl -o /var/chprobe/${probename}.cfg # Uncomment to fetch config regularly
 curl -m 3 --retry 2 -s $global_configurl -o /var/chprobe/global.cfg && chmod +x /var/chprobe/global.cfg
 chown -R chprobe:chprobe /var/chprobe
 curl http://project-mayhem.se/probes/chprobe_motd.sh -o /var/chprobe/chprobe.sh
@@ -61,9 +61,9 @@ curl http://project-mayhem.se/probes/chprobe_motd.sh -o /var/chprobe/chprobe.sh
 #  echo 'Backing up probe'	# Don't do backups every update
 #  tar cvfz chprobe_backup-$(date +"%d%m%y"-"%H%M" | tr -d '-').tgz $probedir/	# Don't do backups every update
   echo 'Downloading & updating probe'
-  rm -f $probedir/chprobe_latest_$(hostname -d).tgz*; sleep 1 && wget --no-cache $probeurl -P $probedir/
+  rm -f $probedir/chprobe_latest_${probename}.tgz*; sleep 1 && wget --no-cache $probeurl -P $probedir/
   rm -f $probedir/version-* &&
-  tar xvfz $probedir/chprobe_latest_$(hostname -d).tgz -C $probedir/ &&
+  tar xvfz $probedir/chprobe_latest_${probename}.tgz -C $probedir/ &&
   chmod +x $probedir/probe_settings
   chmod +x $probedir/fw-rules
   chmod +x $probedir/probemanager
@@ -86,15 +86,6 @@ curl http://project-mayhem.se/probes/chprobe_motd.sh -o /var/chprobe/chprobe.sh
   bash $probedir/./probe_settings -s
 ### Temporary space ###
 
-# Set some global vars
-export iperf3tcp_log="/var/log/iperf3tcp.log"
-export iperf3udp_log="/var/log/iperf3udp.log"
-# Enable strict mode permanently
-# echo "export strict_mode=true" >> /etc/profile.d/chprobe_settings.sh
-
-## Remove probemanager from git repo
-  rm $probedir/probemanager_unofficial > /dev/null
-#  rm $probedir/chprobe_latest_*.tgz
 ## Install motd and fix permissions for it
   chown -R chprobe:chprobe /var/log/chprobe*
   chown -R chprobe:chprobe /var/log/iperf*
@@ -106,7 +97,7 @@ export iperf3udp_log="/var/log/iperf3udp.log"
 
 # Alias for commiting configuration
 #echo "#!/bin/bash
-#probename=\"\$(hostname -d)\"
+#probename=\"\${probename}\"
 #sed -i 's@chprobe_commit=false@chprobe_commit=true@g' /var/chprobe/\${probename}.cfg
 #$probedir/./probe_settings" > /usr/local/sbin/chprobe_commit && chmod +x /usr/local/sbin/chprobe_commit
 
@@ -121,6 +112,11 @@ export iperf3udp_log="/var/log/iperf3udp.log"
 #  wget --no-cache http://project-mayhem.se/files/wrk_binary-x86.tgz -P /root/ &&
 #  tar xvfz /root/wrk_binary-x86.tgz -C /usr/bin/
 #  rm -Rf /root/wrk_binary-x86.tgz*
+
+# Copy chprobe cfg file to change filename (v23)
+if [ `grep -c 0.96.23 /etc/chprobe_version 2> /dev/null` 2> /dev/null -eq 1 ]; then
+/bin/cp -f /var/chprobe/${probename}.cfg /var/chprobe/chprobe.cfg && /bin/rm -f /var/chprobe/${probename}.cfg
+fi
 
 ### Temporary space ###
   echo "We're done" && exit 0

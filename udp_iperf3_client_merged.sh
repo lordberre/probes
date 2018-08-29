@@ -22,9 +22,12 @@ USAGE
     esac;done
 
 shift
+
+# Vars
 logfacility=local4.debug
 logtag=chprobe_iperf3udp
 count=$(( ( RANDOM % 9999 )  + 1 ))
+probedir="/home/chprobe"
 
 # Default settings
 declare -i chprobe_iperf3udp_stream_b1=5
@@ -36,7 +39,7 @@ declare -i chprobe_iperf3udp_stream_t3=60
 
 # Load configuration file
 probe="`cut -d "." -f 2 <<< $(hostname)`"
-chprobe_configfile="/var/chprobe/${probe}.cfg"
+chprobe_configfile="/var/chprobe/chprobe.cfg"
 source $chprobe_configfile
 
 # Remote url stuff

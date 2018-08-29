@@ -3,7 +3,7 @@
 
 # Load config file
 probe="`cut -d "." -f 2 <<< $(hostname)`"
-chprobe_configfile="/var/chprobe/${probe}.cfg"
+chprobe_configfile="/var/chprobe/chprobe.cfg"
 source $chprobe_configfile || probedir="/home/chprobe"
 
 # Boolean to track ifdown/ifup events

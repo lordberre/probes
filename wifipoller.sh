@@ -27,6 +27,24 @@ else
     exit 1 
 fi
 
+# Default config
+default_cfg () {
+probe="`cut -d "." -f 2 <<< $(hostname)`"
+logfile="/var/log/chprobe_wifistats.log"
+echo "[chprobe_cfg] Loaded default settings because cfg file wasnt found or contains errors" | logger -p local5.err
+}
+
+# Load configuration file
+chprobe_configfile="/var/chprobe/chprobe.cfg"
+if [ ! -f $chprobe_configfile ]; then
+    default_cfg
+else
+    source $chprobe_configfile
+    if [ $? -ne 0 ]; then
+        default_cfg
+    fi
+fi
+
 logger_type=legacy
 
 # Detect Wi-Fi NIC
@@ -48,9 +66,7 @@ if [ $iwdetect -gt 0 ] 2> $REDIRECT;then
         logger -t $stats_type[$(echo $count)] -p $logfacility
 
     elif [ $logger_type = "basic" ]; then
-        echo 'not implemented yet' && exit 0
-#    probe="`cut -d "." -f 2 <<< $(hostname)`"
-#    return "sed -e "s/^/$(date "+%b %d %H:%M:%S") ${probe} $logfacility: /" >> $logfile"
+        sed -e "s/^/$(date "+%b %d %H:%M:%S") ${probe} $logfacility: /" >> $logfile
 
     elif [ $logger_type = "logger" ]; then
         echo 'not implemented yet' && exit 0
