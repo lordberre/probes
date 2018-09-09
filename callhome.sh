@@ -7,6 +7,8 @@ managerurl="http://project-mayhem.se/files/probemanager"
 default_if=`ip link show | awk '{print $2}' | egrep 'en|eth' | head -1 | tr -d ':'`
 ENVFILE="/var/chprobe/chprobe_forcedown"
 connectivity=true
+chprobe_reboot=disable
+
 
 # Load config file
 probe="`cut -d "." -f 2 <<< $(hostname)`"
@@ -15,7 +17,14 @@ source $ENVFILE
 
 # Restart NM function
 restart_nm () {
-systemctl restart NetworkManager && echo "[chprobe_error] Seems we don't have internet connectivity, restarting NetworkManager in case it's just us" | logger -p local5.err
+systemctl restart NetworkManager && echo "[chprobe_network_error] Seems we don't have internet connectivity, restarting NetworkManager in case it's just us" | logger -p local5.err
+}
+
+# ProbeReboot function
+declare -i probe_uptime=$(printf "%.0f\n" `awk {'print $1'} /proc/uptime`)
+reboot_probe () {
+echo "[chprobe_network_error] Rebooting probe due to excessive network errors.." | logger -p local5.emerg
+reboot
 }
 
 connectivity_check () {
@@ -23,14 +32,14 @@ connectivity_check () {
 noconnectivity="$(ping -c 10 8.8.8.8 | grep 100% | wc -l)"
 
 if [ $noloop -eq 0 ]; then
-	if [ $noconnectivity -ge 1 ]; then connectivity=false; echo "[chprobe_error] Got no errors, but not a single packet went through" | logger -p local5.err && restart_nm
+	if [ $noconnectivity -ge 1 ]; then connectivity=false; echo "[chprobe_network_error] Got no errors, but not a single packet went through" | logger -p local5.err && restart_nm
 	else ping -q -c 1 8.8.8.8
-		if [ $? -ge 2 ]; then connectivity=false; echo "[chprobe_error] We don't have connectivity (error returned: $?)" | logger -p local5.err && restart_nm
+		if [ $? -ge 2 ]; then connectivity=false; echo "[chprobe_network_error] We don't have connectivity (error returned: $?)" | logger -p local5.err && restart_nm
 		fi
 	fi
 else 
 	if [ $chprobe_forcedown = false ] && [ $connectivity = false ]; then
-ifdown $default_if;sleep 5;ifup $default_if;echo "[chprobe_error] Forced $default_if down and up again.." | logger -p local5.err && echo "chprobe_forcedown=false" > $ENVFILE
+ifdown $default_if;sleep 5;ifup $default_if;echo "[chprobe_network_error] Forced $default_if down and up again.." | logger -p local5.err && echo "chprobe_forcedown=false" > $ENVFILE
 	fi
 fi
 }
@@ -83,6 +92,21 @@ if [ $dns_check = true ] && [ $connectivity = true ]; then
 # Send heartbeats
 curl -m 3 -s http://project-mayhem.se --data-ascii DATA -A ${probe} &> /dev/null
 curl -L -m 3 --retry 2 -s http://88.198.46.60 | grep Your | awk '{print $4}' | tr -d '</b>' | sed -e "s/^/$(date "+%b %d %H:%M:%S") ${probe} chprobe_wanip[$(echo 9000]): $(cd $probedir && ls version-* | sed 's/\<version\>//g') /" | tr -s ' ' | tr -d '-' >> /var/log/chprobe_wanip.txt
+
+# Check criterias for rebooting if configured
+if [ $connectivity = false ] && [ $chprobe_reboot = enable ] && [ $probe_uptime -ge 2000 ]; then
+    declare -i reboot_condition=`journalctl -S -2h -p 3 --no-pager | grep -c 'chprobe_network_error'`
+    if [ -z ${callhome_interval+x} ]; then
+        if [ $reboot_condition -ge 12 ];then
+             reboot_probe
+    fi
+    else
+        interval_formula=`expr 90 \* 120 / 100 / $callhome_interval \* 2`
+        if [ $reboot_condition -ge $interval_formula ]; then
+            reboot_probe
+        fi
+    fi
+fi
 
 # Update Probemanager
 curl -m 3 --retry 2 -s -o ${probedir}probemanager $managerurl &> /dev/null && chmod +x ${probedir}probemanager &> /dev/null

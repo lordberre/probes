@@ -12,7 +12,7 @@ source $ENVFILE
 
 # Restart NM function
 restart_nm () {
-systemctl restart NetworkManager && echo "[chprobe_error] Seems we don't have internet connectivity, restarting NetworkManager in case it's just us" | logger -p local5.err
+systemctl restart NetworkManager && echo "[chprobe_network_error] Seems we don't have internet connectivity, restarting NetworkManager in case it's just us" | logger -p local5.err
 }
 
 ## Interface actions to revive to link if it's not properly resumed after an error.
@@ -25,15 +25,15 @@ source $ENVFILE
 noconnectivity="$(ping -c 10 8.8.8.8 | grep 100% | wc -l)"
 
 if [ $noloop -eq 0 ]; then
-	if [ $noconnectivity -ge 1 ]; then echo "[chprobe_error] Got no errors, but not a single packet went through" | logger -p local5.err && restart_nm
+	if [ $noconnectivity -ge 1 ]; then echo "[chprobe_network_error] Got no errors, but not a single packet went through" | logger -p local5.err && restart_nm
 	else ping -q -c 1 8.8.8.8
-		if [ $? -ge 2 ]; then echo "[chprobe_error] We don't have connectivity (error returned: $?)" | logger -p local5.err && restart_nm
+		if [ $? -ge 2 ]; then echo "[chprobe_network_error] We don't have connectivity (error returned: $?)" | logger -p local5.err && restart_nm
 		fi
 	fi
 elif [ $noconnectivity -ge 0 ]; then echo "[chprobe] We have connectivity" | logger -p notice && echo "chprobe_forcedown=false" > $ENVFILE
 else 
 	if [ $chprobe_forcedown = false ]; then
-ifdown $default_if;sleep 5;ifup $default_if;echo "[chprobe_error] Forced $default_if down and up again.." | logger -p local5.err && echo "chprobe_forcedown=false" > $ENVFILE
+ifdown $default_if;sleep 5;ifup $default_if;echo "[chprobe_network_error] Forced $default_if down and up again.." | logger -p local5.err && echo "chprobe_forcedown=false" > $ENVFILE
 	fi
 fi
 }
@@ -77,5 +77,5 @@ if [ "$2" = "up" ]; then
 echo "chprobe_forcedown=false" > $ENVFILE && chprobe_reinit
 elif [ "$2" = "down" ]; then
 kill `pgrep -f 'iperf|bbk'` &> /dev/null
-echo "[chprobe_error] Terminated iperf/bbk processes due to link down event" | logger -p local5.err
+echo "[chprobe_network_error] Terminated iperf/bbk processes due to link down event" | logger -p local5.err
 fi
