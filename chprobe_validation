@@ -37,11 +37,20 @@ fi
 
 debug=false
 
+# Load config file
+chprobe_configfile="/var/chprobe/chprobe.cfg"
+source $chprobe_configfile &> /dev/null
+
+    if [ ! -f $chprobe_configfile ]; then
+        echo "[chprobe_error] Config file doesn't exist." | logger -p local5.err && exit 1
+
+    elif [ `wc -l $chprobe_configfile` -eq 0 &> /dev/null ]; then
+       echo "[chprobe_error] Config file is empty!" | logger -p local5.err && exit 1
+    fi
+
 # Curl RTT
 if [ $use_curl = "true" ]; then
 logfacility="chprobe_httpvalidation[$(echo $count)]"
-httpv_target=somehost
-httpv_url="http://${http_target}/bench/{256K,257K,259K,260K,275K,280K,286K,294K,302K,306K,313K,315K,316K,325K,327K,330K,331K,339K,340K,348K,351K,354K,365K,368K,374K,375K,376K,380K,381K,383K,384K,397K,399K,400K,406K,408K,414K,424K,434K,436K,438K,439K,447K}KB"
 httpv_outfile="/var/log/chprobe_httpvalidation.log"
 display_options="
 time_namelookup:  %{time_namelookup}\n
@@ -77,7 +86,7 @@ echo "$1" | grep $2 | awk '{sum+=$2} END {print sum}'
     avg_totaltime_perfile=`echo $total_time_total_ms / $file_count | bc`
     echo "$total_time_namelookup $total_time_connect $total_time_appconnect $total_time_pretransfer $total_time_redirect $total_time_starttransfer $total_time_total" | sed -e "s/^/$(date "+%b %d %H:%M:%S") ${probe} $logfacility: $httpv_target $file_count $avg_totaltime_perfile /" >> $httpv_outfile
 else
-    curl -v -w "$display_options" -o /dev/null "$url"
+    curl -v -w "$display_options" -o /dev/null "$httpv_target"
 fi
 
 # Iperf3 stream settings
@@ -85,15 +94,6 @@ elif [ $use_iperf3 = "true" ]; then
 iperf3_outfile="/var/log/chprobe_iperf3validation.log"
 iperf3_udplogfacility="chprobe_iperf3_udpstream[$(echo $count)]"
 iperf3_tcplogfacility="chprobe_iperf3_tcpstream[$(echo $count)]"
-iperf3_server="somehost"
-iperf3_tcpport1="5262"
-iperf3_tcpport2="5253"
-iperf3_udpport1="5264"
-iperf3_udpport2="5265"
-iperf3_tcpbandwidth="5m"
-iperf3_udpbandwidth="1m"
-iperf3_udpduration="120"
-iperf3_tcpduration="600"
 
 ##
 ## Streams will be ran in backround in order to allow parallelisation and granuilariy of the reports (tcp stream)
