@@ -1,0 +1,16 @@
+[Unit]
+Description=chprobe stream %I
+After=syslog.target network.target auditd.service
+ 
+[Service]
+Type=simple
+User=chprobe
+Group=chprobe
+WorkingDirectory=PROBEDIR
+ExecStart=$probedir/chprobe_validation -s %i
+TimeoutSec=30
+RestartSec=15s
+Restart=always
+ 
+[Install]
+WantedBy=multi-user.target
