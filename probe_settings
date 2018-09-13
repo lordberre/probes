@@ -1,5 +1,5 @@
 #!/bin/bash
-declare -i probe_settings_version=3 # Version 3.3.0
+declare -i probe_settings_version=5 # Version 5.0.0
 
 # Default values
 chprobe_ipv6=auto
@@ -14,137 +14,151 @@ source $chprobe_configfile
 if [ $probe_settings = "disable" ]; then echo 'Probe settings disabled by user, aborting' && exit 0
 fi
 
+# Check config version against this script
+if [ $chprobe_configversion -ne $probe_settings_version &> /dev/null ]; then
+    echo "[chprobe_error]: Probe configuration file is out of date!" | logger -p local5.err # && exit 1
+
+elif [ `wc -l $chprobe_configfile` -eq 0 &> /dev/null ]; then
+   echo "[chprobe_error] Config file is empty!" | logger -p local5.err && exit 1
+elif [ ! -f $chprobe_configfile ]; then
+    curl -m 3 --retry 2 -s $defaultcfg_url -o $chprobe_configfile
+    echo "[chprobe_error] Config file doesn't exist." | logger -p local5.err
+    sleep 3
+    if [ -f $chprobe_configfile ]; then
+        echo "[chprobe_error] Loaded default settings due to error." | logger -p local5.err
+    fi
+fi
+
+# Create/update commit script
+if [ $chprobe_strictmode = "enable" ]; then strictarg="-s";else strictarg="";fi
+echo "#!/bin/bash
+sed -i 's@chprobe_commit=false@chprobe_commit=true@g' $chprobe_configfile
+$probedir./probe_settings $strictarg" > /usr/local/sbin/chprobe_commit
+chmod +x /usr/local/sbin/chprobe_commit &> /dev/null
+
 # If configuration is commited, check all variables
 if [ $chprobe_commit = "true" ]; then
 
 # Reload firewall rules
-iptables -F && /root/./fw-rules
-
-# Check config version against this script
-if [ $chprobe_configversion -ne $probe_settings_version &> /dev/null ]; then
-   echo "[chprobe_error]: Probe configuration file is out of date!" | logger -p local5.err # && exit 1
-
-elif [ `wc -l chprobe_configfile` -eq 0 &> /dev/null ]; then
-   echo "[chprobe_error] Config file is empty!" | logger -p local5.err && exit 1
-elif [ ! -f $chprobe_configfile ]; then
-   curl -m 3 --retry 2 -s $defaultcfg_url -o $chprobe_configfile
-   echo "[chprobe_error] Config file doesn't exist." | logger -p local5.err
-   sleep 3
-   if [ -f $chprobe_configfile ]; then
-      echo "[chprobe_error] Loaded default settings due to error." | logger -p local5.err
-   fi
-fi
+    iptables -F && /root/./fw-rules
 
 # Config Fail Check function
-check_vars () {
-if [ $1 -ge $2 -a $1 -le $3 ]; then echo "looks right? $1 $2"
-else echo "The configured range: $2 - $3 for $1 is out of range, aborting" && exit 1
-fi
-}
+    check_vars () {
+    if [ $1 -ge $2 -a $1 -le $3 ]; then echo "looks right? $1 $2"
+    else echo "The configured range: $2 - $3 for $1 is out of range, aborting" && exit 1
+    fi
+    }
 
 # Check or override vars
-check_vars $callhome_interval 1 60
+    check_vars $callhome_interval 1 60
 
-	if [ $chprobe_wrk = "enable" ]; then
-check_vars $wrk_interval 1 60
-check_vars $wrk_workers 3 10
-check_vars $wrk_sessions 1 5000
-check_vars $wrk_duration 10 360
-	fi
+    if [ $chprobe_wrk = "enable" ]; then
+        check_vars $wrk_interval 1 60
+        check_vars $wrk_workers 3 10
+        check_vars $wrk_sessions 1 5000
+        check_vars $wrk_duration 10 360
+    fi
 
-	if [ $chprobe_icmp = "enable" ]; then
-check_vars $icmp_cron_interval 2 60
-check_vars $icmp_cron_interval_ipv6 2 60
-#check_vars $icmp1_interval '0.5' 100 
-#check_vars $icmp2_interval '0.5' 100
-#check_vars $icmp3_interval '0.5' 100
-check_vars $icmp1_size 54 9000
-check_vars $icmp2_size 54 9000
-check_vars $icmp3_size 54 9000
-check_vars $icmp1_packets 5 100
-check_vars $icmp2_packets 5 100
-check_vars $icmp3_packets 5 100
-	fi
+    if [ $chprobe_icmp = "enable" ]; then
+        check_vars $icmp_cron_interval 2 60
+        check_vars $icmp_cron_interval_ipv6 2 60
+        #check_vars $icmp1_interval '0.5' 100 
+        #check_vars $icmp2_interval '0.5' 100
+        #check_vars $icmp3_interval '0.5' 100
+        check_vars $icmp1_size 54 9000
+        check_vars $icmp2_size 54 9000
+        check_vars $icmp3_size 54 9000
+        check_vars $icmp1_packets 5 100
+        check_vars $icmp2_packets 5 100
+        check_vars $icmp3_packets 5 100
+    fi
 
-	if [ $chprobe_dns = "enable" ]; then
-check_vars $dig_interval 2 60
-	fi
+    if [ $chprobe_dns = "enable" ]; then
+        check_vars $dig_interval 2 60
+    fi
 
-	if [ $chprobe_iperf3tcp = "enable" ] || [ $chprobe_iperf3tcp_ipv6 = "enable" ]; then
-check_vars $iperf3tcp_ds_interval 0 60
-check_vars $iperf3tcp_us_interval 0 60
-check_vars $iperf3tcp_ds_interval_ipv6 0 60
-check_vars $iperf3tcp_us_interval_ipv6 0 60
-check_vars $chprobe_iperf3tcp_sessions 1 30
-check_vars $chprobe_iperf3tcp_duration 10 300
-check_vars $chprobe_iperf3tcp_omitduration 2 300
-	fi
+    if [ $chprobe_iperf3tcp = "enable" ] || [ $chprobe_iperf3tcp_ipv6 = "enable" ]; then
+        check_vars $iperf3tcp_ds_interval 0 60
+        check_vars $iperf3tcp_us_interval 0 60
+        check_vars $iperf3tcp_ds_interval_ipv6 0 60
+        check_vars $iperf3tcp_us_interval_ipv6 0 60
+        check_vars $chprobe_iperf3tcp_sessions 1 30
+        check_vars $chprobe_iperf3tcp_duration 10 300
+        check_vars $chprobe_iperf3tcp_omitduration 2 300
+    fi
 
-	if [ $chprobe_iperf3udp = "enable" ]; then
-check_vars $iperf3udp_ds_interval 0 60
-check_vars $iperf3udp_us_interval 0 60
-check_vars $chprobe_iperf3udp_stream_b1 1 300
-check_vars $chprobe_iperf3udp_stream_b2 1 300
-check_vars $chprobe_iperf3udp_stream_b3 1 300
-check_vars $chprobe_iperf3udp_stream_t1 1 600
-check_vars $chprobe_iperf3udp_stream_t2 1 600
-check_vars $chprobe_iperf3udp_stream_t3 1 600
+    if [ $chprobe_iperf3udp = "enable" ]; then
+        check_vars $iperf3udp_ds_interval 0 60
+        check_vars $iperf3udp_us_interval 0 60
+        check_vars $chprobe_iperf3udp_stream_b1 1 300
+        check_vars $chprobe_iperf3udp_stream_b2 1 300
+        check_vars $chprobe_iperf3udp_stream_b3 1 300
+        check_vars $chprobe_iperf3udp_stream_t1 1 600
+        check_vars $chprobe_iperf3udp_stream_t2 1 600
+        check_vars $chprobe_iperf3udp_stream_t3 1 600
+    fi
+    if [ $chprobe_iperf3highudp = "enable" ]; then
+        check_vars $iperf3highudp_ds_interval 0 60
+        check_vars $iperf3highudp_us_interval 0 60
+        check_vars $chprobe_iperf3udp_sessions 1 30
+        check_vars $chprobe_iperf3udp_length 10 1800
+        check_vars $chprobe_iperf3udp_bandwidth 1 10000
+    fi
 
-	fi
-	if [ $chprobe_iperf3highudp = "enable" ]; then
-check_vars $iperf3highudp_ds_interval 0 60
-check_vars $iperf3highudp_us_interval 0 60
-check_vars $chprobe_iperf3udp_sessions 1 30
-check_vars $chprobe_iperf3udp_length 10 1800
-check_vars $chprobe_iperf3udp_bandwidth 1 10000
-	fi
+    if [ $chprobe_bbk = "enable" ] || [ $chprobe_bbk_ipv6 = "enable" ]; then
+        check_vars $chprobe_bbk_interval 2 60
+        check_vars $chprobe_bbk_interval_ipv6 2 60
+    fi
+    if [ $chprobe_iperf3_localserver = "enable" ]; then
+        check_vars $chprobe_iperf3_serverport 1000 65535
+        check_vars $chprobe_iperf3_croninterval 1 60
+    fi
 
-	if [ $chprobe_bbk = "enable" ] || [ $chprobe_bbk_ipv6 = "enable" ]; then
-check_vars $chprobe_bbk_interval 2 60
-check_vars $chprobe_bbk_interval_ipv6 2 60
-	fi
-        if [ $chprobe_iperf3_localserver = "enable" ]; then
-check_vars $chprobe_iperf3_serverport 1000 65535
-check_vars $chprobe_iperf3_croninterval 1 60
-        fi
+    if [ $chprobe_httpv = "enable" ]; then
+        check_vars $httpv_interval 1 60
+    fi
 
-else echo "No commits detected."
-fi
+else 
+    echo "No commits detected."
 
-##
+fi # End of commit instructions if applied
 
 # Run with argument "-s" to enabled strict mode
 # When enabled, all multi tests and icmp tests are disabled during high performance tests (every 15th/16th minute)
 # This will obviously not give the desired effect if you modified the default schedule for iperf3/bbk
-        case "$1" in
-        -s) strict_mode=true ;;
-        -h)  cat <<USAGE
+case "$1" in
+    -s) strict_mode=true ;;
+    -h)  cat <<USAGE
 usage: $0 [-s] [-h]
 
     -h) See this help
     -s) Enable strict mode
 USAGE
-            exit 0
-            ;;
-        *) strict_mode=false # Default setting
-    esac
+    exit 0 ;;
+    *) strict_mode=false # Default setting
+esac
 
 # Check IPv6 connectivity
 if [ $chprobe_ipv6 = "auto" ];then
-echo "Checking IPv6 connectivity, stay tuned... (Your commit should be OK. Bye bye!)" &&
-
+    echo "Checking IPv6 connectivity, stay tuned... (Your commit should be OK. Bye bye!)" &&
 # In case ping6 returns errors we assume IPv6 isn't working
-ping6 -q -c 1 2a00:1450:400f:80a::2003
-if [ $? -ge 2 ]; then echo "We don't have IPv6 connectivity (error returned: $?)" && ipmode=ipv4
-        else
-
+    ping6 -q -c 1 2a00:1450:400f:80a::2003
+    if [ $? -ge 2 ]; then
+        echo "We don't have IPv6 connectivity (error returned: $?)" && ipmode=ipv4
+    else
         # No errors returned at least, let's see if we actually have connectivity
         noconnectivity="$(ping6 -q -c 10 2a00:1450:400f:80a::2003 | egrep '100%' | wc -l)"
-        if [ $noconnectivity -ge 1 ]; then echo "We don't have IPv6 connectivity" && ipmode=ipv4
-       else echo "We have IPv6 connectivity" && ipmode=dualstack
-       fi;fi
-elif [ $chprobe_ipv6 = "enable" ]; then ipmode=dualstack
-else ipmode=ipv4
+        if [ $noconnectivity -ge 1 ]; then 
+            echo "We don't have IPv6 connectivity" && ipmode=ipv4
+        else 
+            echo "We have IPv6 connectivity" && ipmode=dualstack
+        fi
+    fi
+
+elif [ $chprobe_ipv6 = "enable" ]; then 
+    ipmode=dualstack
+else
+    ipmode=ipv4
 fi
 
 # chprobe crontab
@@ -250,6 +264,10 @@ echo "2-12/2 * * * * $cron_user $probedir./multi_chprobe -e $https_target 4 &> /
 32-58/2 * * * * $cron_user $probedir./multi_chprobe -e $https_target 4 &> /dev/null" >> /etc/crontab
 fi
 
+if [ $chprobe_httpv = "enable" ]; then
+echo "*/$httpv_interval * * * * $cron_user chprobe_validation -t &> /dev/null" >> /etc/crontab
+fi
+
 # crontab IPv6 + strict scheduling
                 if [ $ipmode = "dualstack" ]; then
 if [ $chprobe_icmp = "enable" ]; then
@@ -295,11 +313,16 @@ if [ $chprobe_wrk = "enable" ]; then
 echo "*/$wrk_interval * * * * $cron_user $probedir./multi_chprobe -w $wrk_workers $wrk_sessions $wrk_duration $wrk_target &> /dev/null" >> /etc/crontab
 fi
 
+if [ $chprobe_https = "enable" ]; then
 echo "*/$https_interval * * * * $cron_user $probedir./multi_chprobe -e $https_target 4 &> /dev/null" >> /etc/crontab
+fi
 
-	        if [ $ipmode = "dualstack" ]; then
+if [ $chprobe_httpv = "enable" ]; then
+echo "*/$httpv_interval * * * * $cron_user chprobe_validation -t &> /dev/null" >> /etc/crontab
+fi 
 
 # crontab IPv6 + no strict scheduling
+if [ $ipmode = "dualstack" ]; then
 if [ $chprobe_icmp = "enable" ]; then
 echo "*/$icmp_cron_interval_ipv6  *  *  *  * $cron_user $probedir./icmp_chprobe -v6 $icmp4_packets 1 $icmp1_size $icmp1_target &> /dev/null
 */$icmp_cron_interval_ipv6  *  *  *  * $cron_user $probedir./icmp_chprobe -v6 $icmp4_packets 1 $icmp3_size $icmp3_target &> /dev/null
@@ -319,7 +342,7 @@ fi
 
 # Now restart crontab
 systemctl restart crond
-fi
+fi # End of crontab instructions
 
 # rc.local
 if [ $chprobe_rc_local = "enable" ]; then
@@ -385,17 +408,31 @@ if [ $ssh_tunnel = "enable" ]; then
 	fi
 fi
 
-# If configured, enable the iperf3 server service
-if [ $chprobe_iperf3_localserver = "enable" ]; then
- if [ -f /usr/lib/systemd/system/iperf3@.service ]; then
+# Systemd applier
+systemd_apply() {
+enable_var=$1
+identifier=$2
+service_fullpath=$3
+if [ $enable_var = "enable" ]; then
+ if [ -f $service_fullpath ]; then
 
-        if [ `systemctl is-active iperf3@$chprobe_iperf3_serverport` != 'active' ]; then
-        systemctl start iperf3@$chprobe_iperf3_serverport && systemctl enable iperf3@$chprobe_iperf3_serverport
+        if [ `systemctl is-active $identifier` != 'active' ]; then
+        systemctl start $identifier && systemctl enable $identifier
         fi
- else echo "ERROR: No iperf3 systemd service was detected, can't start iperf3 server"
+ else echo "ERROR: No $identifier systemd service was detected, can't start $identifier service"
  fi
-else systemctl stop iperf3@$chprobe_iperf3_serverport && systemctl disable iperf3@$chprobe_iperf3_serverport &> /dev/null
+else systemctl stop $identifier && systemctl disable $identifier &> /dev/null
 fi
+}
+
+# If configured, enable the iperf3 server service
+systemd_apply "$chprobe_iperf3_localserver" "iperf3@$chprobe_iperf3_serverport" "/usr/lib/systemd/system/iperf3@.service"
+
+# If configured, enable the iperf3 TCP valdiation streams
+systemd_apply "$chprobe_iperf3tcpv" "chprobe_stream@tcp" "/usr/lib/systemd/system/chprobe_stream@.service"
+
+# If configured, enable the iperf3 UDP valdiation streams
+systemd_apply "$chprobe_iperf3udpv" "chprobe_stream@udp" "/usr/lib/systemd/system/chprobe_stream@.service"
 
 # Check if iperf3 servers are manually configured and save target locally
 if [ $chprobe_iperf3tcp_target != "disable" ]; then
