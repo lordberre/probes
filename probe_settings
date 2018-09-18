@@ -3,7 +3,12 @@ declare -i probe_settings_version=5 # Version 5.0.0
 
 # Default values
 chprobe_ipv6=auto
-defaultcfg_url="http://project-mayhem.se/probes/chprobe_cfg/chprobe_default.cfg"
+probedir=/home/chprobe/
+if [ `uname -m` == "armv7l" ]; then
+    defaultcfg_url="http://project-mayhem.se/probes/chprobe_cfg/chprobe_default_arm.cfg"
+else 
+    defaultcfg_url="http://project-mayhem.se/probes/chprobe_cfg/chprobe_default.cfg"
+fi
 
 # Load config file
 probe="`cut -d "." -f 2 <<< $(hostname)`"
@@ -35,6 +40,10 @@ echo "#!/bin/bash
 sed -i 's@chprobe_commit=false@chprobe_commit=true@g' $chprobe_configfile
 $probedir./probe_settings $strictarg" > /usr/local/sbin/chprobe_commit
 chmod +x /usr/local/sbin/chprobe_commit &> /dev/null
+
+# Create/update collision debug script
+echo "clear && echo '### START ###' && { journalctl -n 50000 | egrep 'iperf3|bbk' | egrep 'Finished|Starting'; tail -n 200 /var/log/chprobe_bbk.log; tail -n 200 /var/log/iperf3tcp.log; } | sort && echo '### END ###'" > /usr/local/sbin/chprobe_collisiondebug
+chmod +x /usr/local/sbin/chprobe_collisiondebug &> /dev/null
 
 # If configuration is commited, check all variables
 if [ $chprobe_commit = "true" ]; then
@@ -378,6 +387,7 @@ echo "# CREATED BY CHPROBE SCRIPT
 /var/log/chprobe*.log
 {
 weekly
+create 664 chprobe chprobe
 rotate 2
 size 500K
 delaycompress
@@ -387,6 +397,7 @@ endscript
 }
 /var/log/chprobe_wanip.txt {
 daily
+create 664 chprobe chprobe
 rotate 0
 size 1000
 postrotate
