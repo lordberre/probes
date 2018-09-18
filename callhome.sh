@@ -12,7 +12,7 @@ chprobe_reboot=disable
 
 # Load config file
 probe="`cut -d "." -f 2 <<< $(hostname)`"
-source /var/chprobe/${probe}.cfg || probedir="/home/chprobe"
+source /var/chprobe/chprobe.cfg || probedir="/home/chprobe"
 source $ENVFILE
 
 # Restart NM function
