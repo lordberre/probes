@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 2.50.0. Added wifipoller to replace redundant code.
+# Version 2.51.0. Implemented GPIO support for GPIO triggered test scenarios.
 # Note: Some variables are named "bbk"-something since we're using the same zone functionallity
 
 # Dont touch this
@@ -111,12 +111,14 @@ How to use: $0 -4 or -6 must be specified.
     -p) Use udp protocol rather than tcp
     -b) Set bandwidth (udp only) - Input must be an INTEGER and in mbit/s (default is 100mbit)
     -a) Set PATH if script is called via Ansible
+    -i) Use GPIO to trigger the iperf3 test
+    -o) Specify the GPIO port to listen on
 Note: When using zones, your test might not start immediately
 Example: $ ./iperf3script -d -4 -z 1
 USAGE
  }
 
-options=':z:f:b:46duhgspa'
+options=':z:f:b:o:46duhgspai'
 while getopts $options option
 do
     case $option in
@@ -131,6 +133,8 @@ do
         s  ) skip_configfile=true;chprobe_iperf3tcp_target=disable       ;;
         f  ) skip_configfile=true;forced_server=true;chprobe_iperf3tcp_target=${OPTARG}       ;;
         a  ) set_path=true ;;
+	i  ) gpio=true ;;
+	o  ) declare -i gpio_port=${OPTARG} ;;
         h  ) usage; exit;;
         \? ) echo "Unknown option: -$OPTARG" >&2; exit 1;;
         :  ) echo "Missing option argument for -$OPTARG" >&2; exit 1;;
@@ -167,6 +171,46 @@ fi
 # Ansible PATH
 if [ `uname -m` != "armv7l" ] && [ $set_path = true ]; then
 PATH=/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/home/chprobe/.local/bin:/home/chprobe/bin
+fi
+
+# GPIO Stuff
+if [ $gpio = true ] && [ ! -z ${gpio_port+x} ]; then
+	gpio_direction=out
+	if [ $ip_version -eq 4 ]; then ipversion_tag=ipv4_gpio
+	elif [ $ip_version -eq 6 ]; then ipversion_tag=ipv6_gpio
+	fi
+
+	gpio_init() {
+		gpio_state=`echo $1 > /sys/class/gpio/export` &&
+			echo $gpio_direction > /sys/class/gpio/gpio$1/direction &&
+			echo "[$logtag] GPIO port $1 was (re)set successfully." | logger -p notice
+	}
+
+	gpio_resetstate () {
+		# Set or reset gpio pin
+		if [ ! -d /sys/class/gpio/gpio$1 ]; then
+			gpio_init $1
+		else
+			echo $1 > /sys/class/gpio/unexport
+			gpio_init $1
+		fi
+	}
+
+	gpio_init() {
+		gpio_state=`echo $1 > /sys/class/gpio/export` &&
+			echo $gpio_direction > /sys/class/gpio/gpio$1/direction &&
+			echo "[$logtag] GPIO port $1 was (re)set successfully." | logger -p notice
+    	}
+
+	gpio_getstate() {
+		cat /sys/class/gpio/gpio$1/value
+		if [ $? -ge 1 ]; then gpio_resetstate $1
+		fi
+	}
+
+elif [ $gpio = true ] && [ -z ${gpio_port+x} ]; then
+	echo "GPIO selected but no port was specified. Aborting." && exit 1
+
 fi
 
 if [ $protocol = udp ];then
@@ -227,6 +271,7 @@ elif [ $protocol = udp ];then logtag=chprobe_iperf3highudp_${1}_${2}[$(echo $cou
    fi
 fi
 }
+
 # Protocol
 
 if [ $protocol = tcp ];then
@@ -393,18 +438,44 @@ else remotelocal_loop
 fi
 }
 
+gpio_run() {
+gpio_init $gpio_port
+while true; do
+	if [ `gpio_getstate $gpio_port` -eq 1 ]; then
+		start_iperf3
+		sleep 1
+	elif [ `gpio_getstate $gpio_port` -eq 0 ]; then
+		echo "[$logtag] Waiting for GPIO input.." #| logger -p notice
+		sleep 1
+	else
+		gpio_resetstate $gpio_port
+		echo "[$logtag] Just performed a reset on the gpio port due to error" | logger -p local5.err
+		sleep 20
+	fi
+
+done
+}
+
 # Allocate the zone and start the desired test
         case "$ip_version" in
-                4)
-unique_sleep
-start_iperf3 &&
+               4)
+			if [ $gpio = true ]; then
+				gpio_run
+			else
+				unique_sleep
+				start_iperf3
+			fi &&
 
 # Set zone status to 0 when done
 setzone 0; echo "[$logtag] Finished $logtag [debug: $localstatus | $(pgrep -f 'bbk_cli|iperf3 --client' | wc -l)]" | logger -p notice
 ;;
-		6)
-unique_sleep
-start_iperf3 &&
+               6)
+                        if [ $gpio = true ]; then
+                                gpio_run
+                        else
+                                unique_sleep
+                                start_iperf3
+                        fi &&
 
 # Set zone status to 0 when done
 setzone 0; echo "[$logtag] Finished $logtag [debug: $localstatus | $(pgrep -f 'bbk_cli|iperf3 --client' | wc -l)]" | logger -p notice
