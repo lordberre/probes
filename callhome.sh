@@ -8,16 +8,29 @@ default_if=`ip link show | awk '{print $2}' | egrep 'en|eth' | head -1 | tr -d '
 ENVFILE="/var/chprobe/chprobe_forcedown"
 connectivity=true
 chprobe_reboot=disable
+tinkerboard=false
 
 # Load config file
 probe="`cut -d "." -f 2 <<< $(hostname)`"
 source /var/chprobe/chprobe.cfg || probedir="/home/chprobe"
 source $ENVFILE
 
+# Detect tinkerboards
+if [ `uname -r | grep -c rockchip` ];then 
+    tinkerboard=true
+fi
+
 # Use a different logtag for link events
 if [[ $1 = "dispatcher" ]]; then error_tag="chprobe_link_error"
 else error_tag="chprobe_network_error"
 fi
+
+# Special tinkerboard WA
+tinker_ifconfig_wa() {
+if [ `grep $default_if /etc/network/interfaces -c` -eq 0 ] && [ $tinkerboard = true ]; then
+    ifconfig $default_if up && echo "[$error_tag] Manually set $default_if up with ifconfig since if-scripts arent properly set up"
+fi
+}
 
 # Restart NM function
 restart_nm () {
@@ -52,6 +65,7 @@ if [ $noloop -eq 0 ]; then
 else
     set_state
     if [ $chprobe_forcedown = false ] && [ $connectivity = false ]; then
+        tinker_ifconfig_wa &> /dev/null
         ifdown $default_if
         sleep 5
         ifup $default_if
@@ -83,7 +97,7 @@ if [ $connectivity = true ]; then echo "[chprobe] We have connectivity" | logger
 fi
 
 # Check DNS querys explicitly
-dig +time=5 &> /dev/null
+dig @8.8.8.8 +time=5 &> /dev/null
 if [ $? -eq 0 ]; then echo "[chprobe] DNS responses are OK" | logger -p notice && dns_check=true
 else echo "[chprobe] Warning! DNS is not working properly." | logger -p local5.err && dns_check=false
 fi
