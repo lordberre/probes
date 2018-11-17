@@ -1,5 +1,5 @@
 #!/bin/bash
-declare -i probe_settings_version=5 # Version 5.0.0
+declare -i probe_settings_version=5 # Version 5.0.1
 
 # Default values
 chprobe_ipv6=auto
@@ -419,44 +419,44 @@ if [ $ssh_tunnel = "enable" ]; then
 	fi
 fi
 
-# Systemd applier
-systemd_apply() {
-enable_var=$1
-identifier=$2
-service_fullpath=$3
-if [ $enable_var = "enable" ]; then
- if [ -f $service_fullpath ]; then
-
-        if [ `systemctl is-active $identifier` != 'active' ]; then
-        systemctl start $identifier && systemctl enable $identifier
-        fi
- else echo "ERROR: No $identifier systemd service was detected, can't start $identifier service"
- fi
-else systemctl stop $identifier && systemctl disable $identifier &> /dev/null
-fi
-}
-
-# If configured, enable the iperf3 server service
-systemd_apply "$chprobe_iperf3_localserver" "iperf3@$chprobe_iperf3_serverport" "/usr/lib/systemd/system/iperf3@.service"
-
-# If configured, enable the iperf3 TCP valdiation streams
-systemd_apply "$chprobe_iperf3tcpv" "chprobe_stream@tcp" "/usr/lib/systemd/system/chprobe_stream@.service"
-
-# If configured, enable the iperf3 UDP valdiation streams
-systemd_apply "$chprobe_iperf3udpv" "chprobe_stream@udp" "/usr/lib/systemd/system/chprobe_stream@.service"
-
 # Check if iperf3 servers are manually configured and save target locally
 if [ $chprobe_iperf3tcp_target != "disable" ]; then
 echo $chprobe_iperf3tcp_target > /var/chprobe/ip_tcp.txt
 fi
 
-# Load manually configured cronjobs if any
-# echo -e "\n$(for cronjobs in $chprobe_cronjob1 \ $chprobe_cronjob2 \ $chprobe_cronjob3; do echo -e $cronjobs;done)" >> /etc/crontab
-
-# Reload necessary modules when config is being commited
 if [ $chprobe_commit = "true" ]; then
-# systemctl restart sshtunnel
-echo "$(date) - Configuration commit for ${probe}" >> /var/log/chprobe_commits.log
+# Systemd applier
+    systemd_apply() {
+        enable_var=$1 # "enable" or "disable"
+        identifier=$2 # The systemd-service, e.g "chprobe_stream@tcp"
+        service_fullpath=$3 # Path to systemd service
+        if [ $enable_var = "enable" ]; then
+            if [ -f $service_fullpath ]; then
+                if [ `systemctl is-active $identifier` != 'active' ]; then
+                    systemctl start $identifier && systemctl enable $identifier
+                elif [ `systemctl status chprobe_stream@tcp -l | grep iperf3 -c` -eq 0 ]; then
+                    systemctl restart chprobe_stream@tcp
+                elif [ `systemctl status chprobe_stream@udp -l | grep iperf3 -c` -eq 0 ]; then
+                    systemctl restart chprobe_stream@udp
+                fi
+            else echo "ERROR: No $identifier systemd service was detected, can't start $identifier service"
+            fi
+        else systemctl stop $identifier && systemctl disable $identifier &> /dev/null
+        fi
+    }
+
+    # If configured, enable the iperf3 server service
+    systemd_apply "$chprobe_iperf3_localserver" "iperf3@$chprobe_iperf3_serverport" "/usr/lib/systemd/system/iperf3@.service"
+
+    # If configured, enable the iperf3 TCP valdiation streams
+    systemd_apply "$chprobe_iperf3tcpv" "chprobe_stream@tcp" "/usr/lib/systemd/system/chprobe_stream@.service"
+
+    # If configured, enable the iperf3 UDP valdiation streams
+    systemd_apply "$chprobe_iperf3udpv" "chprobe_stream@udp" "/usr/lib/systemd/system/chprobe_stream@.service"
+
+    # Reload necessary modules when config is being commited
+    # systemctl restart sshtunnel
+    echo "$(date) - Configuration commit for ${probe}" >> /var/log/chprobe_commits.log
 fi
 
 # Copy interface init script to nm dispatcher
