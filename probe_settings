@@ -1,5 +1,5 @@
 #!/bin/bash
-declare -i probe_settings_version=5 # Version 5.0.1
+declare -i probe_settings_version=8 # Version 8.0.0
 
 # Default values
 chprobe_ipv6=auto
@@ -45,11 +45,22 @@ chmod +x /usr/local/sbin/chprobe_commit &> /dev/null
 echo "clear && echo '### START ###' && { journalctl -n 50000 | egrep 'iperf3|bbk' | egrep 'Finished|Starting'; tail -n 200 /var/log/chprobe_bbk.log; tail -n 200 /var/log/iperf3tcp.log; } | sort && echo '### END ###'" > /usr/local/sbin/chprobe_collisiondebug
 chmod +x /usr/local/sbin/chprobe_collisiondebug &> /dev/null
 
+# Save probedir var on disk
+    echo "probedir=$probedir" > /var/chprobe/chprobe_vars
+
 # If configuration is commited, check all variables
 if [ $chprobe_commit = "true" ]; then
 
 # Reload firewall rules
     iptables -F && /root/./fw-rules
+
+# Autostart scripts
+# If configured, the probe will start the firewall, updates probe and runs callhome/upnp scripts upon booting
+    if [ $chprobe_init = "enable" ]; then
+        systemctl enable chprobe_init
+    else
+        systemctl disable chprobe_init
+    fi
 
 # Config Fail Check function
     check_vars () {
@@ -188,10 +199,6 @@ MAILTO=$cron_user
 # *  *  *  *  * user-name  command to be executed
 */$callhome_interval *  *  *  * $cron_user $probedir./callhome.sh &> /dev/null
 */5 *  *  *  * root bash /var/chprobe/./chprobe.sh > /etc/motd 2> /dev/null" > /etc/crontab
-
-if [ $ssh_tunnel = "enable" ]; then
-echo "0 5 * * * $cron_user systemctl restart sshtunnel &> /dev/null" >> /etc/crontab
-fi
 
 if [ $chprobe_iperf3_localserver = "enable" ]; then
 echo "*/$chprobe_iperf3_croninterval * * * * $cron_user $probedir./iperf3_antifreeze &> /dev/null" >> /etc/crontab
@@ -353,18 +360,6 @@ fi
 systemctl restart crond
 fi # End of crontab instructions
 
-# rc.local
-if [ $chprobe_rc_local = "enable" ]; then
-echo "Installing probe rc.local and syslog"
-echo "#!/bin/bash
-# CHPROBE RC.LOCAL MOD
-touch /var/lock/subsys/local
-/$cron_user/./fw-rules
-$probedir./callhome.sh && $probedir./probemanager update" > /etc/rc.local
-# mv $probedir/chprobe_syslog.conf /etc/rsyslog.d/
-chmod +x /etc/rc.d/rc.local
-fi
-
 # uPnP
 if [ $chprobe_upnp = "enable"  ]; then
 	if [ $chprobe_crontab = "enable"  ]; then
@@ -373,10 +368,6 @@ if [ $chprobe_upnp = "enable"  ]; then
 	echo "*/$crontime *  *  *  * $cron_user $probedir./upnpc-probe.sh > /dev/null" >> /etc/crontab
 	else echo 'upnp timer is not within supported range (60-3600 sec). Not adding a crontab entry'
 		fi
-	fi
-
-        if [ $chprobe_rc_local = "enable"  ]; then
-	echo "$probedir./upnpc-probe.sh" >> /etc/rc.local
 	fi
 fi
 
@@ -457,6 +448,21 @@ if [ $chprobe_commit = "true" ]; then
     # Reload necessary modules when config is being commited
     # systemctl restart sshtunnel
     echo "$(date) - Configuration commit for ${probe}" >> /var/log/chprobe_commits.log
+
+fi
+
+# Disablo or enable NetworkManager (no commit needed)
+systemctl is-active --quiet NetworkManager
+nm_status=$?
+if [[ $nm_status -eq 0 ]] && [[ $chprobe_nm = "disable" ]]; then
+    systemctl stop NetworkManager
+    systemctl disable NetworkManager
+    systemctl mask NetworkManager
+
+elif [[ $nm_status -ne 0 ]] && [[ $chprobe_nm = "enable" ]]; then
+    systemctl unmask NetworkManager
+    systemctl start NetworkManager
+    systemctl enable NetworkManager
 fi
 
 # Copy interface init script to nm dispatcher
