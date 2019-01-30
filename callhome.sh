@@ -16,7 +16,7 @@ source /var/chprobe/chprobe.cfg || probedir="/home/chprobe"
 source $ENVFILE
 
 # Detect tinkerboards
-if [ `uname -r | grep -c rockchip` ];then 
+if [ `uname -r | grep -c rockchip` -eq 1 ];then 
     tinkerboard=true
 fi
 
@@ -41,7 +41,7 @@ systemctl restart NetworkManager && echo "[$error_tag] Seems we don't have inter
 declare -i probe_uptime=$(printf "%.0f\n" `awk {'print $1'} /proc/uptime`)
 reboot_probe () {
 echo "[$error_tag] Rebooting probe due to excessive network errors.." | logger -p local5.emerg
-reboot
+systemctl reboot
 }
 
 set_state() {
@@ -114,9 +114,11 @@ if [ $ssh_tunnel = "enable" ]; then
 # Check SSH Tunnel status and try to recover. Skip when called by dispatcher since we do it there anyway
    if [ $connectivity = true ] && [[ $1 != "dispatcher" ]]; then
       if [ `systemctl status sshtunnel -l | egrep -c 'error|fail|unreach'` -ge 1 ]; then
-      systemctl restart sshtunnel && echo "[chprobe_sshtunnel] Restarted sshtunnel due to errors." | logger -p local5.err
+          systemctl restart sshtunnel && echo "[chprobe_sshtunnel] Restarted sshtunnel due to errors." | logger -p local5.err
       elif [ `systemctl is-active sshtunnel` != 'active' ]; then
-      systemctl restart sshtunnel
+          systemctl restart sshtunnel && echo "[chprobe_sshtunnel] Restarted sshtunnel because it wasnt runnning." | logger -p local5.err
+      else
+          systemctl restart sshtunnel && echo "[chprobe_sshtunnel] Schedually restarted sshtunnel" | logger -p notice 
       fi
    fi
 	if [ $dns_check = "true" ]; then
@@ -153,3 +155,6 @@ if [ $connectivity = false ] && [ $chprobe_reboot = enable ] && [ $probe_uptime 
         fi
     fi
 fi
+
+# Always exit with status 0
+exit 0
