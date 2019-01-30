@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version 2.51.0. Implemented GPIO support for GPIO triggered test scenarios.
+# Version 2.51.3. Implemented timeout thresholds for GPIO input. Also fixed the logtag for the measurement when using the GPIO test.
 # Note: Some variables are named "bbk"-something since we're using the same zone functionallity
 
 # Dont touch this
@@ -37,6 +37,12 @@ declare -i chprobe_iperf3udp_bandwidth=50
 declare -i chprobe_iperf3udp_sessions=2
 declare -i chprobe_iperf3udp_length=60
 udp_bandwidth=`expr $chprobe_iperf3udp_bandwidth / $chprobe_iperf3udp_sessions`
+
+# Default GPIO/robot settings
+declare -i chprobe_checkpoint_threshold_sec=600 # Max active time for gpio state before considering it an error
+declare -i chprobe_gpio_activedelay_sec=300 # Delay in seconds to wait if probe is stuck in active state
+declare -i chprobe_idle_threshold_sec=600 # Max idle time for gpio state before considering it an error
+declare -i chprobe_gpio_loopinterval_sec=1 # Sleep interval between GPIO checks
 
 # Ridrect flag
 REDIRECT="/dev/null"
@@ -180,6 +186,14 @@ if [ $gpio = true ] && [ ! -z ${gpio_port+x} ]; then
 	elif [ $ip_version -eq 6 ]; then ipversion_tag=ipv6_gpio
 	fi
 
+        # Calculate elapsed test time against configured threshold to detect when measurement is stuck
+        declare -i maxcount_active=`expr $chprobe_checkpoint_threshold_sec / $chprobe_iperf3tcp_duration`
+        declare -i maxcount_idle=`expr $chprobe_idle_threshold / chprobe_gpio_loopinterval_sec`
+
+        # Set the threshold trigger to ~90% of expected events
+        declare -i active_threshold=`echo $(( $maxcount_active*90/100 ))`
+        declare -i idle_threshold=`echo $(( $maxcount_idle*90/100 ))`
+
 	gpio_init() {
 		gpio_state=`echo $1 > /sys/class/gpio/export` &&
 			echo $gpio_direction > /sys/class/gpio/gpio$1/direction &&
@@ -269,6 +283,10 @@ elif [ $protocol = udp ];then logtag=chprobe_iperf3highudp_${1}_${2}[$(echo $cou
    if [ $ip_version -eq 4 ];then beats_tag=iperf3highudp[$(echo $count)]
    elif [ $ip_version -eq 6 ];then beats_tag=iperf3highudp_ipv6[$(echo $count)]
    fi
+fi
+
+if [ $gpio = true ] && [ ! -z ${gpio_port+x} ]; then
+    beats_tag=${beats_tag}_gpio
 fi
 }
 
@@ -438,14 +456,37 @@ else remotelocal_loop
 fi
 }
 
+gpio_stuck() {
+state=$1
+if [ $state = "active" ]; then
+    declare -i delay_time=$chprobe_gpio_activedelay_sec
+elif [ $state = "idle" ]; then
+    declare -i delay_time=$chprobe_idle_threshold_sec
+sleep $delay_time
+echo "[$logtag] Done sleeping. Resetting Gpio port before trying again" | logger -p notice
+gpio_resetstate $gpio_port
+sleep 5
+fi
+}
+
 gpio_run() {
 gpio_init $gpio_port
 while true; do
+	declare -i robot_active=`journalctl -S -${chprobe_checkpoint_threshold_sec}s --no-pager | grep -c $count`
+        declare -i robot_idle=`journalctl -S -${idle_threshold}s --no-pager | grep -c 'Waiting for GPIO input'`
+        if [ $robot_active -ge $active_threshold ]; then
+            echo "[$logtag] GPIO checkpoint input has exceeded threshold (Robot is probably stuck). Halting measurements for $chprobe_gpio_activedelay_sec seconds" | logger -p local5.err
+            gpio_stuck active
+        elif [ $robot_idle -ge $idle_threshold ]; then
+            echo "[$logtag] GPIO idle input has exceeded threshold (Robot is probably stuck). Sleeping for $chprobe_idle_threshold_sec seconds" | logger -p local5.err
+            gpio_stuck idle
+        fi
 	if [ `gpio_getstate $gpio_port` -eq 1 ]; then
 		start_iperf3
 		sleep 1
-	elif [ `gpio_getstate $gpio_port` -eq 0 ]; then
-		echo "[$logtag] Waiting for GPIO input.." #| logger -p notice
+	elif [ `gpio_getstate $gpio_port` -eq 0 ] || [  ]; then
+                count=$(( ( RANDOM % 9999 )  + 1 )) # Generate new count id
+		echo "[$count] Waiting for GPIO input.." | logger -p info
 		sleep 1
 	else
 		gpio_resetstate $gpio_port
