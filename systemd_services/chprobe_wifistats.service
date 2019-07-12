@@ -1,0 +1,17 @@
+[Unit]
+Description=Wi-Fi stats collector
+After=syslog.target network.target auditd.service
+ 
+[Service]
+Type=simple
+User=chprobe
+Group=chprobe
+WorkingDirectory=/usr/bin
+ExecStart=/bin/bash /usr/bin/wifipoller main
+StandardOutput=null
+TimeoutSec=45
+RestartSec=30s
+Restart=always
+ 
+[Install]
+WantedBy=multi-user.target
