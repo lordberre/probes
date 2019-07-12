@@ -33,7 +33,12 @@ if [[ $chprobe_linkhelper = "enable" ]]; then
 			if [ $? -ge 2 ]; then echo "[chprobe_network_error] We don't have connectivity (error returned: $?)" | logger -p local5.err && restart_nm
 			fi
 		fi
-	elif [ $noconnectivity -ge 0 ]; then echo "[chprobe] We have connectivity" | logger -p notice && echo "chprobe_forcedown=false" > $ENVFILE
+	elif [ $noconnectivity -ge 0 ]; then 
+            echo "[chprobe] We have connectivity" | logger -p notice && echo "chprobe_forcedown=false" > $ENVFILE
+
+            # Restart udp/tcp streams
+            systemctl restart chprobe_stream@tcp &> /dev/null
+            systemctl restart chprobe_stream@udp &> /dev/null
 	else 
 		if [ $chprobe_forcedown = false ]; then
 	ifdown $default_if;sleep 5;ifup $default_if;echo "[chprobe_network_error] Forced $default_if down and up again.." | logger -p local5.err && echo "chprobe_forcedown=false" > $ENVFILE
